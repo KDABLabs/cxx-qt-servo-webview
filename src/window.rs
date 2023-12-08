@@ -1,6 +1,6 @@
 use std::cell::Cell;
 
-use euclid::{Rect, Size2D, Point2D, Scale};
+use euclid::{Point2D, Rect, Scale, Size2D};
 use servo::compositing::windowing::{AnimationState, WindowMethods};
 use servo::servo_config::pref;
 use servo::webrender_surfman::WebrenderSurfman;
@@ -11,6 +11,7 @@ use surfman::platform::generic::multi::connection::NativeConnection;
 use surfman::platform::generic::multi::context::NativeContext;
 use surfman::{Connection, GLApi, GLVersion, SurfaceType};
 
+#[allow(non_camel_case_types)]
 #[repr(transparent)]
 struct c_void(std::ffi::c_void);
 
@@ -67,9 +68,7 @@ impl QServoWindow {
                 let mut wayland_handle = raw_window_handle::WaylandDisplayHandle::empty();
                 wayland_handle.display = wayland_display_handle as *mut std::ffi::c_void;
                 raw_window_handle::RawDisplayHandle::Wayland(wayland_handle)
-            }
-            else
-            {
+            } else {
                 unimplemented!();
                 // let x11_display_handle = unsafe { ffi::x11_display_handle() };
                 // if !x11_display_handle.is_null() {
@@ -105,9 +104,7 @@ impl QServoWindow {
                 let mut wayland_handle = raw_window_handle::WaylandWindowHandle::empty();
                 wayland_handle.surface = wayland_window_handle as *mut std::ffi::c_void;
                 raw_window_handle::RawWindowHandle::Wayland(wayland_handle)
-            }
-            else
-            {
+            } else {
                 unimplemented!();
             }
         };

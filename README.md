@@ -19,4 +19,8 @@ rustup components add llvm-tools rustc-dev
 
 We need to copy the cargo.lock from the servo repository to ensure we have the correct patched versions of crates.
 
+# logging
 
+```
+RUST_LOG="debug" cargo un
+```

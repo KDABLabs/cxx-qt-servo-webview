@@ -1,4 +1,10 @@
-use servo::{BrowserId, embedder_traits::EmbedderMsg, compositing::windowing::EmbedderEvent};
+use servo::{compositing::windowing::EmbedderEvent, embedder_traits::EmbedderMsg, BrowserId};
+
+#[derive(Default)]
+pub(crate) struct QServoBrowserResponse {
+    pub(crate) present: bool,
+    pub(crate) title: Option<String>,
+}
 
 #[derive(Default)]
 pub(crate) struct QServoBrowser {
@@ -16,7 +22,12 @@ impl QServoBrowser {
     }
 
     /// Returns true if the caller needs to manually present a new frame.
-    pub fn handle_servo_events(&mut self, events: Vec<(Option<BrowserId>, EmbedderMsg)>) {
+    pub fn handle_servo_events(
+        &mut self,
+        events: Vec<(Option<BrowserId>, EmbedderMsg)>,
+    ) -> QServoBrowserResponse {
+        let mut response = QServoBrowserResponse::default();
+
         for (_browser_id, msg) in events {
             match msg {
                 EmbedderMsg::BrowserCreated(new_browser_id) => {
@@ -29,12 +40,19 @@ impl QServoBrowser {
                     self.event_queue
                         .push(EmbedderEvent::SelectBrowser(new_browser_id));
                 }
-                // TODO: this is where new page titles occur too
-                // we will need to push these through to Qt
-                // either pass in a Qt thread or maybe this moves into WebView?
-                _others => {}
+                EmbedderMsg::ChangePageTitle(title) => {
+                    response.title = title;
+                }
+                EmbedderMsg::ReadyToPresent => {
+                    response.present = true;
+                }
+                _others => {
+                    println!("handle_servo_events: {:?}", _others);
+                }
             }
         }
+
+        response
     }
 
     pub fn push_event(&mut self, event: EmbedderEvent) {

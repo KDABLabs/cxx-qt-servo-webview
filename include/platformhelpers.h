@@ -8,7 +8,6 @@ namespace rust::servo {
 
 using c_void = void;
 
-// @here how can i get from a `QWindow*` to it's `wl_surface*` in Qt 6 ? Seems i need to get to a `QNativeInterface::Private::QWaylandWindow` somehow ?
 // https://blog.david-redondo.de/qt/kde/2022/12/09/wayland-native-interface.html
 
 // QPlatformNativeInterface *nativeInterface = QGuiApplication::platformNativeInterface();
@@ -48,6 +47,8 @@ void* waylandDisplayHandle()
 
 void* waylandWindowHandle()
 {
+    // TODO: instead pass in a QWindow from a QML attached property
+    //
     // QWindow* window = QGuiApplication::focusWindow();
     auto windows = QGuiApplication::allWindows();
     if (windows.isEmpty())
@@ -62,8 +63,6 @@ void* waylandWindowHandle()
         qWarning() << Q_FUNC_INFO << "no first window!";
         return nullptr;
     }
-
-    qWarning() << Q_FUNC_INFO << window << window->isVisible() << window->isActive();
 
     if (auto waylandWindow = window->nativeInterface<QNativeInterface::Private::QWaylandWindow>())
     {
