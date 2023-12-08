@@ -14,12 +14,33 @@ Window {
 
     ColumnLayout {
         anchors.fill: parent
+        anchors.margins: 10
         spacing: 10
 
-        Label {
-            elide: Text.ElideRight
+        RowLayout {
+            height: 16
             Layout.fillWidth: true
-            text: webView.title
+            spacing: 10
+
+            Image {
+                height: 16
+                source: webView.faviconUrl
+                sourceSize.height: 16
+                sourceSize.width: 16
+                width: 16
+                visible: status === Image.Ready
+            }
+
+            Label {
+                elide: Text.ElideRight
+                font.pixelSize: 16
+                Layout.fillWidth: true
+                text: webView.title
+            }
+
+            Item {
+                Layout.fillWidth: true
+            }
         }
 
         RowLayout {
@@ -42,14 +63,19 @@ Window {
         Item {
             Layout.fillHeight: true
             Layout.fillWidth: true
+
+            ServoWebView {
+                id: webView
+                //Layout.fillHeight: true
+                //Layout.fillWidth: true
+                url: "file:///var/home/andrew/Projects/servo/servo/tests/html/about-mozilla.html"
+            }
         }
     }
 
-    ServoWebView {
-        id: webView
-        //anchors.centerIn: parent
-        //height: 600
-        //width: 600
-        url: "file:///var/home/andrew/Projects/servo/servo/tests/html/about-mozilla.html"
+    BusyIndicator {
+        anchors.centerIn: parent
+        running: webView.loading
+        visible: running
     }
 }

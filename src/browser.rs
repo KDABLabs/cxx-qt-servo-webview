@@ -2,8 +2,10 @@ use servo::{compositing::windowing::EmbedderEvent, embedder_traits::EmbedderMsg,
 
 #[derive(Default)]
 pub(crate) struct QServoBrowserResponse {
-    pub(crate) present: bool,
+    pub(crate) favicon_url: Option<url::Url>,
+    pub(crate) present: Option<bool>,
     pub(crate) title: Option<String>,
+    pub(crate) loading: Option<bool>,
 }
 
 #[derive(Default)]
@@ -22,6 +24,8 @@ impl QServoBrowser {
     }
 
     /// Returns true if the caller needs to manually present a new frame.
+    ///
+    /// TODO: does this move into the WebView?
     pub fn handle_servo_events(
         &mut self,
         events: Vec<(Option<BrowserId>, EmbedderMsg)>,
@@ -43,8 +47,17 @@ impl QServoBrowser {
                 EmbedderMsg::ChangePageTitle(title) => {
                     response.title = title;
                 }
+                EmbedderMsg::NewFavicon(url) => {
+                    response.favicon_url = Some(url.as_url().to_owned());
+                }
+                EmbedderMsg::LoadStart => {
+                    response.loading = Some(true);
+                },
+                EmbedderMsg::LoadComplete => {
+                    response.loading = Some(false);
+                },
                 EmbedderMsg::ReadyToPresent => {
-                    response.present = true;
+                    response.present = Some(true);
                 }
                 _others => {
                     println!("handle_servo_events: {:?}", _others);

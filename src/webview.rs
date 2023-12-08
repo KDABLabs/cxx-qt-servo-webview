@@ -11,6 +11,8 @@ pub(crate) mod qobject {
     extern "RustQt" {
         #[qobject]
         #[qml_element]
+        #[qproperty(QUrl, favicon_url)]
+        #[qproperty(bool, loading)]
         #[qproperty(QString, title)]
         #[qproperty(QUrl, url)]
         type ServoWebView = super::QServoWebViewRust;
@@ -36,6 +38,8 @@ use crate::window::QServoWindow;
 #[derive(Default)]
 pub struct QServoWebViewRust {
     browser: QServoBrowser,
+    favicon_url: QUrl,
+    loading: bool,
     servo: Option<Servo<QServoWindow>>,
     title: QString,
     url: QUrl,
@@ -71,7 +75,13 @@ impl qobject::ServoWebView {
         if let Some(title) = response.title {
             self.as_mut().set_title(QString::from(&title));
         }
-        if response.present {
+        if let Some(loading) = response.loading {
+            self.as_mut().set_loading(loading);
+        }
+        if let Some(favicon_url) = response.favicon_url {
+            self.as_mut().set_favicon_url(QUrl::from(&favicon_url));
+        }
+        if let Some(_preset) = response.present {
             // TODO: tell Qt to paint if present is ready
             // self.as_mut().rust_mut().servo.as_mut().unwrap().recomposite();
             // self.as_mut().rust_mut().servo.as_mut().unwrap().present();
@@ -134,6 +144,9 @@ impl cxx_qt::Initialize for qobject::ServoWebView {
                             .browser
                             .push_event(EmbedderEvent::LoadUrl(browser_id, servo_url));
                         event_loop_waker.wake();
+
+                        // Clear any favicon
+                        qobject.as_mut().set_favicon_url(QUrl::default());
                     })
                     .release();
             })
