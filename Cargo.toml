@@ -1,0 +1,26 @@
+[package]
+name = "cxxqtservo"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cxx = "1.0.95"
+cxx-qt = "0.6"
+cxx-qt-lib = { version = "0.6", features = ["url"] }
+
+euclid = "0.22"
+raw-window-handle = "0.5"
+url = "2.3"
+
+libservo = { git = "https://github.com/servo/servo.git", rev = "117d59d393cf7926063e8723934fec97fd61d713" }
+servo-media = { git = "https://github.com/servo/media" }
+surfman = { version = "0.8", features = ["chains", "sm-angle", "sm-angle-default", "sm-x11", "sm-raw-window-handle"] }
+
+[build-dependencies]
+cxx-qt-build = { version = "0.6", features = [ "link_qt_object_files" ] }
+
+# This is required because we want all dependencies that use WebRender to
+# use our vendored version.
+[patch."https://github.com/servo/webrender"]
+webrender = { path = "../servo/third_party/webrender/webrender" }
+webrender_api = { path = "../servo/third_party/webrender/webrender_api" }
