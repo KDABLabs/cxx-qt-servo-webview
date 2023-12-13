@@ -60,16 +60,11 @@ Window {
             }
         }
 
-        Item {
+        ServoWebView {
+            id: webView
             Layout.fillHeight: true
             Layout.fillWidth: true
-
-            ServoWebView {
-                id: webView
-                //Layout.fillHeight: true
-                //Layout.fillWidth: true
-                url: "file:///var/home/andrew/Projects/servo/servo/tests/html/about-mozilla.html"
-            }
+            url: "file:///var/home/andrew/Projects/servo/servo/tests/html/about-mozilla.html"
         }
     }
 

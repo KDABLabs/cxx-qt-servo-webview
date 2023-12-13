@@ -9,6 +9,8 @@ cxx-qt = "0.6"
 cxx-qt-lib = { version = "0.6", features = ["url"] }
 
 euclid = "0.22"
+gleam = "0.15"
+glow = "0.12.2"
 raw-window-handle = "0.5"
 url = "2.3"
 

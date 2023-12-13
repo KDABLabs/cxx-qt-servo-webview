@@ -7,6 +7,8 @@ mod webview;
 mod window;
 
 fn main() {
+    std::env::set_var("QSG_RHI_BACKEND", "opengl");
+
     let mut app = QGuiApplication::new();
     let mut engine = QQmlApplicationEngine::new();
 

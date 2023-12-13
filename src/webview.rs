@@ -6,16 +6,22 @@ pub(crate) mod qobject {
 
         include!("cxx-qt-lib/qurl.h");
         type QUrl = cxx_qt_lib::QUrl;
+
+        include!("qservorendernode.h");
     }
 
-    extern "RustQt" {
+    unsafe extern "RustQt" {
         #[qobject]
+        #[base = "QServoRenderNode"]
         #[qml_element]
         #[qproperty(QUrl, favicon_url)]
         #[qproperty(bool, loading)]
         #[qproperty(QString, title)]
         #[qproperty(QUrl, url)]
         type ServoWebView = super::QServoWebViewRust;
+
+        #[inherit]
+        fn update(self: Pin<&mut ServoWebView>);
     }
 
     impl cxx_qt::Constructor<()> for ServoWebView {}
@@ -24,10 +30,11 @@ pub(crate) mod qobject {
 
 use cxx_qt::{CxxQtType, Threading};
 use cxx_qt_lib::{QString, QUrl};
-use servo::compositing::windowing::EmbedderEvent;
+use servo::compositing::windowing::{EmbedderEvent, WindowMethods};
 use servo::embedder_traits::EventLoopWaker;
 use servo::servo_url::ServoUrl;
 use servo::Servo;
+use surfman::GLApi;
 use std::rc::Rc;
 
 use crate::browser::QServoBrowser;
@@ -82,9 +89,21 @@ impl qobject::ServoWebView {
             self.as_mut().set_favicon_url(QUrl::from(&favicon_url));
         }
         if let Some(_preset) = response.present {
-            // TODO: tell Qt to paint if present is ready
-            // self.as_mut().rust_mut().servo.as_mut().unwrap().recomposite();
-            // self.as_mut().rust_mut().servo.as_mut().unwrap().present();
+            // Does a swap in surfman present
+            // servo/components/webrender_surfman/lib.rs
+            //
+            // Note winit does this after the update() below
+            // but we need this here as our update() happens "later",
+            // so swap the buffers before compositing rather than after
+            self.as_mut().rust_mut().servo.as_mut().unwrap().present();
+
+            // Renders to the gl context ? via composite_specific_target
+            // servo/components/compositing/compositor.rs
+            self.as_mut().rust_mut().servo.as_mut().unwrap().recomposite();
+
+            // TODO: winit does a paint here
+            // Schedule an updatePaintNode
+            self.as_mut().update();
         }
 
         // Servo process browser events
@@ -131,6 +150,28 @@ impl cxx_qt::Initialize for qobject::ServoWebView {
                 // Enable logging and store servo instance
                 servo_data.servo.setup_logging();
                 qobject.as_mut().rust_mut().servo = Some(servo_data.servo);
+
+                let webrender_surfman = window.webrender_surfman();
+                let webrender_gl = match webrender_surfman.connection().gl_api() {
+                    GLApi::GL => unsafe {
+                        gleam::gl::GlFns::load_with(|s| webrender_surfman.get_proc_address(s))
+                    },
+                    GLApi::GLES => unsafe {
+                        gleam::gl::GlesFns::load_with(|s| webrender_surfman.get_proc_address(s))
+                    },
+                };
+                webrender_surfman.make_gl_context_current().unwrap();
+                debug_assert_eq!(webrender_gl.get_error(), gleam::gl::NO_ERROR);
+
+                let gl = unsafe {
+                    glow::Context::from_loader_function(|s| webrender_surfman.get_proc_address(s))
+                };
+
+                // // Adapted from https://github.com/emilk/egui/blob/9478e50d012c5138551c38cbee16b07bc1fcf283/crates/egui_glow/examples/pure_glow.rs
+                // let context = EguiGlow::new(events_loop.as_winit(), Arc::new(gl), None);
+                // context
+                //     .egui_ctx
+                //     .set_pixels_per_point(window.hidpi_factor().get());
 
                 // Tell servo when the URL has been updated
                 qobject
