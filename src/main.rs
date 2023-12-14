@@ -3,8 +3,10 @@ use cxx_qt_lib::{QGuiApplication, QQmlApplicationEngine, QUrl};
 mod browser;
 mod embedder;
 mod events_loop;
+// mod swapchain;
 mod webview;
 mod window;
+mod windowheadless;
 
 fn main() {
     std::env::set_var("QSG_RHI_BACKEND", "opengl");

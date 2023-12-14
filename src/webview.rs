@@ -1,5 +1,7 @@
 #[cxx_qt::bridge]
 pub(crate) mod qobject {
+    // use servo::Servo;
+
     unsafe extern "C++" {
         include!("cxx-qt-lib/qstring.h");
         type QString = cxx_qt_lib::QString;
@@ -10,6 +12,10 @@ pub(crate) mod qobject {
         include!("qservorendernode.h");
     }
 
+    // unsafe extern "Rust" {
+    //     type QServoSwapChain;
+    // }
+
     unsafe extern "RustQt" {
         #[qobject]
         #[base = "QServoRenderNode"]
@@ -19,6 +25,9 @@ pub(crate) mod qobject {
         #[qproperty(QString, title)]
         #[qproperty(QUrl, url)]
         type ServoWebView = super::QServoWebViewRust;
+
+        // #[qinvokable]
+        // fn swap_chain(self: &ServoWebView) -> &QServoSwapChain;
 
         #[inherit]
         fn update(self: Pin<&mut ServoWebView>);
@@ -32,23 +41,28 @@ use cxx_qt::{CxxQtType, Threading};
 use cxx_qt_lib::{QString, QUrl};
 use servo::compositing::windowing::{EmbedderEvent, WindowMethods};
 use servo::embedder_traits::EventLoopWaker;
+use servo::euclid::Size2D;
 use servo::servo_url::ServoUrl;
 use servo::Servo;
-use surfman::GLApi;
 use std::rc::Rc;
+use surfman::chains::SwapChainAPI;
+use surfman::GLApi;
 
 use crate::browser::QServoBrowser;
 use crate::embedder::QServoEmbedder;
 use crate::events_loop::QServoEventsLoopWaker;
+// use crate::swapchain::QServoSwapChain;
 use crate::window::QServoWindow;
+use crate::windowheadless::QServoWindowHeadless;
 
 #[derive(Default)]
 pub struct QServoWebViewRust {
     browser: QServoBrowser,
     favicon_url: QUrl,
     loading: bool,
-    servo: Option<Servo<QServoWindow>>,
+    servo: Option<Servo<QServoWindowHeadless>>,
     title: QString,
+    // swap_chain: QServoSwapChain,
     url: QUrl,
 }
 
@@ -59,6 +73,26 @@ impl QServoWebViewRust {
 }
 
 impl qobject::ServoWebView {
+    // pub fn swap_chain(&self) -> &QServoSwapChain {
+    //     self.swap_chain
+    // }
+
+    // pub fn render_swap_chain(&self) {
+    //     let surfman = self
+    //         .as_mut()
+    //         .rust_mut()
+    //         .servo
+    //         .as_ref()
+    //         .unwrap()
+    //         .window()
+    //         .webrender_surfman();
+    //     let swap_chain = surfman.swap_chain().unwrap();
+    //     let surface = swap_chain.take_surface();
+    //     // TODO: render the surface to GL somewhere
+
+    //     swap_chain.recycle_surface(surface);
+    // }
+
     pub(crate) fn handle_events(mut self: core::pin::Pin<&mut Self>) {
         if self.servo.is_none() {
             return;
@@ -99,7 +133,28 @@ impl qobject::ServoWebView {
 
             // Renders to the gl context ? via composite_specific_target
             // servo/components/compositing/compositor.rs
-            self.as_mut().rust_mut().servo.as_mut().unwrap().recomposite();
+            self.as_mut()
+                .rust_mut()
+                .servo
+                .as_mut()
+                .unwrap()
+                .recomposite();
+
+            // let surfman = self
+            //     .as_mut()
+            //     .rust_mut()
+            //     .servo
+            //     .as_ref()
+            //     .unwrap()
+            //     .window()
+            //     .webrender_surfman();
+            // let swap_chain = surfman.swap_chain().unwrap();
+            // if let Some(surface) = swap_chain.take_surface() {
+            //     swap_chain.recycle_surface(surface);
+            // }
+
+            // TODO: get this surface to Qt
+            // TODO: swap_chain.recycle_surface when it comes back
 
             // TODO: winit does a paint here
             // Schedule an updatePaintNode
@@ -124,7 +179,10 @@ impl cxx_qt::Initialize for qobject::ServoWebView {
             .queue(|mut qobject| {
                 let event_loop_waker = QServoEventsLoopWaker::new(qobject.as_mut().qt_thread());
                 let embedder = Box::new(QServoEmbedder::new(event_loop_waker.clone_box()));
-                let window = Rc::new(QServoWindow::from_qwindow());
+
+                // TODO: Should we create headless or not?
+                // let window = Rc::new(QServoWindow::from_qwindow());
+                let window = Rc::new(QServoWindowHeadless::new(Size2D::new(400, 400)));
                 let user_agent = None;
                 // The in-process interface to Servo.
                 //
@@ -151,21 +209,24 @@ impl cxx_qt::Initialize for qobject::ServoWebView {
                 servo_data.servo.setup_logging();
                 qobject.as_mut().rust_mut().servo = Some(servo_data.servo);
 
-                let webrender_surfman = window.webrender_surfman();
-                let webrender_gl = match webrender_surfman.connection().gl_api() {
-                    GLApi::GL => unsafe {
-                        gleam::gl::GlFns::load_with(|s| webrender_surfman.get_proc_address(s))
-                    },
-                    GLApi::GLES => unsafe {
-                        gleam::gl::GlesFns::load_with(|s| webrender_surfman.get_proc_address(s))
-                    },
-                };
-                webrender_surfman.make_gl_context_current().unwrap();
-                debug_assert_eq!(webrender_gl.get_error(), gleam::gl::NO_ERROR);
+                // Load the webrender
+                // qobject.as_mut().rust_mut().swap_chain.set_webrender_surfman(window.webrender_surfman());
 
-                let gl = unsafe {
-                    glow::Context::from_loader_function(|s| webrender_surfman.get_proc_address(s))
-                };
+                // let webrender_surfman = window.webrender_surfman();
+                // let webrender_gl = match webrender_surfman.connection().gl_api() {
+                //     GLApi::GL => unsafe {
+                //         gleam::gl::GlFns::load_with(|s| webrender_surfman.get_proc_address(s))
+                //     },
+                //     GLApi::GLES => unsafe {
+                //         gleam::gl::GlesFns::load_with(|s| webrender_surfman.get_proc_address(s))
+                //     },
+                // };
+                // webrender_surfman.make_gl_context_current().unwrap();
+                // debug_assert_eq!(webrender_gl.get_error(), gleam::gl::NO_ERROR);
+
+                // let gl = unsafe {
+                //     glow::Context::from_loader_function(|s| webrender_surfman.get_proc_address(s))
+                // };
 
                 // // Adapted from https://github.com/emilk/egui/blob/9478e50d012c5138551c38cbee16b07bc1fcf283/crates/egui_glow/examples/pure_glow.rs
                 // let context = EguiGlow::new(events_loop.as_winit(), Arc::new(gl), None);
