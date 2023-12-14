@@ -60,7 +60,7 @@ pub struct QServoWebViewRust {
     browser: QServoBrowser,
     favicon_url: QUrl,
     loading: bool,
-    servo: Option<Servo<QServoWindowHeadless>>,
+    servo: Option<Servo<QServoWindow>>,
     title: QString,
     // swap_chain: QServoSwapChain,
     url: QUrl,
@@ -181,8 +181,8 @@ impl cxx_qt::Initialize for qobject::ServoWebView {
                 let embedder = Box::new(QServoEmbedder::new(event_loop_waker.clone_box()));
 
                 // TODO: Should we create headless or not?
-                // let window = Rc::new(QServoWindow::from_qwindow());
-                let window = Rc::new(QServoWindowHeadless::new(Size2D::new(400, 400)));
+                let window = Rc::new(QServoWindow::from_qwindow());
+                // let window = Rc::new(QServoWindowHeadless::new(Size2D::new(400, 400)));
                 let user_agent = None;
                 // The in-process interface to Servo.
                 //
