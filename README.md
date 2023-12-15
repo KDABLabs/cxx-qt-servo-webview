@@ -24,3 +24,11 @@ We need to copy the cargo.lock from the servo repository to ensure we have the c
 ```
 RUST_LOG="debug" cargo un
 ```
+
+# servo
+
+```console
+git clone servo
+cd servo
+git checkout 117d59d393cf7926063e8723934fec97fd61d713
+```

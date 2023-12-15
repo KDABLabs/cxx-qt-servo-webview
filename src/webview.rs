@@ -1,4 +1,4 @@
-#[cxx_qt::bridge]
+#[cxx_qt::bridge(cxx_file_stem = "servowebview")]
 pub(crate) mod qobject {
     // use servo::Servo;
 
@@ -12,9 +12,15 @@ pub(crate) mod qobject {
         include!("qservorendernode.h");
     }
 
-    // unsafe extern "Rust" {
-    //     type QServoSwapChain;
-    // }
+    extern "Rust" {
+        type QServoTexture;
+        type QServoSwapChain;
+
+        fn take_surface_as_texture(self: &QServoSwapChain) -> Box<QServoTexture>;
+
+        // fn recycle_surface(self: &QServoSwapChain, surface: Box<QServoSurface>);
+        // fn take_surface(self: &QServoSwapChain) -> Box<QServoSurface>;
+    }
 
     unsafe extern "RustQt" {
         #[qobject]
@@ -26,8 +32,8 @@ pub(crate) mod qobject {
         #[qproperty(QUrl, url)]
         type ServoWebView = super::QServoWebViewRust;
 
-        // #[qinvokable]
-        // fn swap_chain(self: &ServoWebView) -> &QServoSwapChain;
+        #[qinvokable]
+        fn swap_chain(self: &ServoWebView) -> Box<QServoSwapChain>;
 
         #[inherit]
         fn update(self: Pin<&mut ServoWebView>);
@@ -51,7 +57,7 @@ use surfman::GLApi;
 use crate::browser::QServoBrowser;
 use crate::embedder::QServoEmbedder;
 use crate::events_loop::QServoEventsLoopWaker;
-// use crate::swapchain::QServoSwapChain;
+use crate::swapchain::{QServoTexture, QServoSwapChain};
 use crate::window::QServoWindow;
 use crate::windowheadless::QServoWindowHeadless;
 
@@ -60,7 +66,7 @@ pub struct QServoWebViewRust {
     browser: QServoBrowser,
     favicon_url: QUrl,
     loading: bool,
-    servo: Option<Servo<QServoWindow>>,
+    servo: Option<Servo<QServoWindowHeadless>>,
     title: QString,
     // swap_chain: QServoSwapChain,
     url: QUrl,
@@ -73,9 +79,11 @@ impl QServoWebViewRust {
 }
 
 impl qobject::ServoWebView {
-    // pub fn swap_chain(&self) -> &QServoSwapChain {
-    //     self.swap_chain
-    // }
+    pub fn swap_chain(&self) -> Box<QServoSwapChain> {
+        Box::new(QServoSwapChain::new(
+            self.servo.as_ref().unwrap().window().webrender_surfman(),
+        ))
+    }
 
     // pub fn render_swap_chain(&self) {
     //     let surfman = self
@@ -181,8 +189,8 @@ impl cxx_qt::Initialize for qobject::ServoWebView {
                 let embedder = Box::new(QServoEmbedder::new(event_loop_waker.clone_box()));
 
                 // TODO: Should we create headless or not?
-                let window = Rc::new(QServoWindow::from_qwindow());
-                // let window = Rc::new(QServoWindowHeadless::new(Size2D::new(400, 400)));
+                // let window = Rc::new(QServoWindow::from_qwindow());
+                let window = Rc::new(QServoWindowHeadless::new(Size2D::new(400, 400)));
                 let user_agent = None;
                 // The in-process interface to Servo.
                 //
