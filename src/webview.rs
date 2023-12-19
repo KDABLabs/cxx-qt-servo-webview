@@ -18,6 +18,9 @@ pub(crate) mod qobject {
 
         fn take_surface_as_texture(self: &QServoSwapChain) -> Box<QServoTexture>;
 
+        fn object(self: &QServoTexture) -> u32;
+        fn target(self: &QServoTexture) -> u32;
+
         // fn recycle_surface(self: &QServoSwapChain, surface: Box<QServoSurface>);
         // fn take_surface(self: &QServoSwapChain) -> Box<QServoSurface>;
     }
@@ -33,7 +36,13 @@ pub(crate) mod qobject {
         type ServoWebView = super::QServoWebViewRust;
 
         #[qinvokable]
+        fn servo_ready(self: &ServoWebView) -> bool;
+
+        #[qinvokable]
         fn swap_chain(self: &ServoWebView) -> Box<QServoSwapChain>;
+
+        // #[qinvokable]
+        // fn init(self: Pin<&mut ServoWebView>);
 
         #[inherit]
         fn update(self: Pin<&mut ServoWebView>);
@@ -79,6 +88,10 @@ impl QServoWebViewRust {
 }
 
 impl qobject::ServoWebView {
+    pub fn servo_ready(&self) -> bool {
+        self.servo.is_some()
+    }
+
     pub fn swap_chain(&self) -> Box<QServoSwapChain> {
         Box::new(QServoSwapChain::new(
             self.servo.as_ref().unwrap().window().webrender_surfman(),
@@ -178,6 +191,94 @@ impl qobject::ServoWebView {
             .unwrap()
             .handle_events(browser_events);
     }
+
+    fn init(mut self: core::pin::Pin<&mut Self>) {
+        let event_loop_waker = QServoEventsLoopWaker::new(self.as_mut().qt_thread());
+        let embedder = Box::new(QServoEmbedder::new(event_loop_waker.clone_box()));
+
+        // TODO: Should we create headless or not?
+        // let window = Rc::new(QServoWindow::from_qwindow());
+
+        let window = QServoWindowHeadless::new(Size2D::new(400, 400));
+        // Try later until there is a connection
+        if window.is_err() {
+            println!("waiting for window");
+            self.qt_thread().queue(|qobject| qobject.init()).unwrap();
+            return;
+        }
+
+        println!("found window");
+
+        let window = Rc::new(window.unwrap());
+        let user_agent = None;
+        // The in-process interface to Servo.
+        //
+        // It does everything necessary to render the web, primarily
+        // orchestrating the interaction between JavaScript, CSS layout,
+        // rendering, and the client window.
+        //
+        // Clients create a `Servo` instance for a given reference-counted type
+        // implementing `WindowMethods`, which is the bridge to whatever
+        // application Servo is embedded in. Clients then create an event
+        // loop to pump messages between the embedding application and
+        // various browser components.
+        let servo_data = Servo::new(embedder, window.clone(), user_agent);
+
+        // Create an initial state
+        let event = EmbedderEvent::NewBrowser(
+            self.rust().as_servo_url().unwrap().into(),
+            servo_data.browser_id,
+        );
+        self.as_mut().rust_mut().browser.push_event(event);
+        event_loop_waker.wake();
+
+        // Enable logging and store servo instance
+        servo_data.servo.setup_logging();
+        self.as_mut().rust_mut().servo = Some(servo_data.servo);
+
+        // Load the webrender
+        // self.as_mut().rust_mut().swap_chain.set_webrender_surfman(window.webrender_surfman());
+
+        // let webrender_surfman = window.webrender_surfman();
+        // let webrender_gl = match webrender_surfman.connection().gl_api() {
+        //     GLApi::GL => unsafe {
+        //         gleam::gl::GlFns::load_with(|s| webrender_surfman.get_proc_address(s))
+        //     },
+        //     GLApi::GLES => unsafe {
+        //         gleam::gl::GlesFns::load_with(|s| webrender_surfman.get_proc_address(s))
+        //     },
+        // };
+        // webrender_surfman.make_gl_context_current().unwrap();
+        // debug_assert_eq!(webrender_gl.get_error(), gleam::gl::NO_ERROR);
+
+        // let gl = unsafe {
+        //     glow::Context::from_loader_function(|s| webrender_surfman.get_proc_address(s))
+        // };
+
+        // // Adapted from https://github.com/emilk/egui/blob/9478e50d012c5138551c38cbee16b07bc1fcf283/crates/egui_glow/examples/pure_glow.rs
+        // let context = EguiGlow::new(events_loop.as_winit(), Arc::new(gl), None);
+        // context
+        //     .egui_ctx
+        //     .set_pixels_per_point(window.hidpi_factor().get());
+
+        // Tell servo when the URL has been updated
+        self
+            .on_url_changed(move |mut qobject| {
+                // The browser id comes from the initial state
+                let browser_id = qobject.rust().browser.browser_id().unwrap();
+                let servo_url = qobject.rust().as_servo_url().unwrap();
+                qobject
+                    .as_mut()
+                    .rust_mut()
+                    .browser
+                    .push_event(EmbedderEvent::LoadUrl(browser_id, servo_url));
+                event_loop_waker.wake();
+
+                // Clear any favicon
+                qobject.as_mut().set_favicon_url(QUrl::default());
+            })
+            .release();
+    }
 }
 
 impl cxx_qt::Initialize for qobject::ServoWebView {
@@ -185,80 +286,7 @@ impl cxx_qt::Initialize for qobject::ServoWebView {
         self.as_mut()
             .qt_thread()
             .queue(|mut qobject| {
-                let event_loop_waker = QServoEventsLoopWaker::new(qobject.as_mut().qt_thread());
-                let embedder = Box::new(QServoEmbedder::new(event_loop_waker.clone_box()));
-
-                // TODO: Should we create headless or not?
-                // let window = Rc::new(QServoWindow::from_qwindow());
-                let window = Rc::new(QServoWindowHeadless::new(Size2D::new(400, 400)));
-                let user_agent = None;
-                // The in-process interface to Servo.
-                //
-                // It does everything necessary to render the web, primarily
-                // orchestrating the interaction between JavaScript, CSS layout,
-                // rendering, and the client window.
-                //
-                // Clients create a `Servo` instance for a given reference-counted type
-                // implementing `WindowMethods`, which is the bridge to whatever
-                // application Servo is embedded in. Clients then create an event
-                // loop to pump messages between the embedding application and
-                // various browser components.
-                let servo_data = Servo::new(embedder, window.clone(), user_agent);
-
-                // Create an initial state
-                let event = EmbedderEvent::NewBrowser(
-                    qobject.rust().as_servo_url().unwrap().into(),
-                    servo_data.browser_id,
-                );
-                qobject.as_mut().rust_mut().browser.push_event(event);
-                event_loop_waker.wake();
-
-                // Enable logging and store servo instance
-                servo_data.servo.setup_logging();
-                qobject.as_mut().rust_mut().servo = Some(servo_data.servo);
-
-                // Load the webrender
-                // qobject.as_mut().rust_mut().swap_chain.set_webrender_surfman(window.webrender_surfman());
-
-                // let webrender_surfman = window.webrender_surfman();
-                // let webrender_gl = match webrender_surfman.connection().gl_api() {
-                //     GLApi::GL => unsafe {
-                //         gleam::gl::GlFns::load_with(|s| webrender_surfman.get_proc_address(s))
-                //     },
-                //     GLApi::GLES => unsafe {
-                //         gleam::gl::GlesFns::load_with(|s| webrender_surfman.get_proc_address(s))
-                //     },
-                // };
-                // webrender_surfman.make_gl_context_current().unwrap();
-                // debug_assert_eq!(webrender_gl.get_error(), gleam::gl::NO_ERROR);
-
-                // let gl = unsafe {
-                //     glow::Context::from_loader_function(|s| webrender_surfman.get_proc_address(s))
-                // };
-
-                // // Adapted from https://github.com/emilk/egui/blob/9478e50d012c5138551c38cbee16b07bc1fcf283/crates/egui_glow/examples/pure_glow.rs
-                // let context = EguiGlow::new(events_loop.as_winit(), Arc::new(gl), None);
-                // context
-                //     .egui_ctx
-                //     .set_pixels_per_point(window.hidpi_factor().get());
-
-                // Tell servo when the URL has been updated
-                qobject
-                    .on_url_changed(move |mut qobject| {
-                        // The browser id comes from the initial state
-                        let browser_id = qobject.rust().browser.browser_id().unwrap();
-                        let servo_url = qobject.rust().as_servo_url().unwrap();
-                        qobject
-                            .as_mut()
-                            .rust_mut()
-                            .browser
-                            .push_event(EmbedderEvent::LoadUrl(browser_id, servo_url));
-                        event_loop_waker.wake();
-
-                        // Clear any favicon
-                        qobject.as_mut().set_favicon_url(QUrl::default());
-                    })
-                    .release();
+                qobject.init();
             })
             .unwrap();
     }

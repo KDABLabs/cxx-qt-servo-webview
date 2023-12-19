@@ -20,6 +20,8 @@ class QServoSwapChain;
 
 // TODO: could instead have the servo engine live in this thread and class
 // then sync the Qt options via the sync method?
+//
+// Or instead move to a framebuffer object?
 class QServoGLRenderNode : public QSGRenderNode
 {
 public:

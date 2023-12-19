@@ -12,6 +12,15 @@ Window {
     visible: true
     width: 800
 
+    /*
+    onVisibleChanged: {
+        if (visible) {
+            console.warn("starting webview");
+            webView.init();
+        }
+    }
+    */
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 10
@@ -56,6 +65,7 @@ Window {
             Button {
                 text: qsTr("Go")
 
+                //onClicked: webView.active = true
                 onClicked: webView.url = textInputUrl.text
             }
         }
@@ -66,6 +76,20 @@ Window {
             Layout.fillWidth: true
             url: "file:///var/home/andrew/Projects/servo/servo/tests/html/about-mozilla.html"
         }
+
+        /*
+        Loader {
+            id: webView
+            active: false
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+            sourceComponent: Component {
+                ServoWebView {
+                    url: "file:///var/home/andrew/Projects/servo/servo/tests/html/about-mozilla.html"
+                }
+            }
+        }
+        */
     }
 
     BusyIndicator {

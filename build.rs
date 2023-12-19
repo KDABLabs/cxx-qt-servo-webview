@@ -5,6 +5,7 @@ fn main() {
     CxxQtBuilder::new()
         .qt_module("Network")
         .qt_module("Quick")
+        .qt_module("OpenGL")
         .qml_module(QmlModule {
             uri: "com.kdab.servo",
             rust_files: &["src/webview.rs"],

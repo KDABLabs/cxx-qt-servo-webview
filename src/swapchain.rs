@@ -25,10 +25,19 @@ impl QServoTexture {
         let texture = surface.map(|surface| surfman.create_surface_texture(surface).unwrap());
         println!("texture: {}", texture.is_some());
 
-        Self {
-            texture,
-            surfman,
+        Self { texture, surfman }
+    }
+
+    pub(crate) fn object(&self) -> u32 {
+        if let Some(texture) = self.texture.as_ref() {
+            self.surfman.surface_texture_object(texture) as u32
+        } else {
+            unimplemented!()
         }
+    }
+
+    pub(crate) fn target(&self) -> u32 {
+        self.surfman.device().surface_gl_texture_target() as u32
     }
 }
 

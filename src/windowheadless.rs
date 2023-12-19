@@ -5,7 +5,7 @@ use servo::{
     euclid::{Point2D, Scale, Size2D, Rect},
     webrender_surfman::WebrenderSurfman, servo_geometry::DeviceIndependentPixel,
 };
-use surfman::{Connection, SurfaceType};
+use surfman::{Connection, SurfaceType, Error as SurfmanError};
 
 pub(crate) struct QServoWindowHeadless {
     animation_state: Cell<AnimationState>,
@@ -15,9 +15,21 @@ pub(crate) struct QServoWindowHeadless {
 impl QServoWindowHeadless {
     pub fn new(
         size: Size2D<u32, DeviceIndependentPixel>,
-    ) -> Self {
+    ) -> Result<Self, SurfmanError> {
+        use surfman::platform::generic::multi;
+        use surfman::platform::unix::wayland;
+        let native_connection = wayland::connection::NativeConnection::current()?;
+        let wayland_connection = unsafe {
+            wayland::connection::Connection::from_native_connection(native_connection)
+                .expect("Failed to bootstrap wayland connection")
+        };
+        let connection = multi::connection::Connection::Default(
+            multi::connection::Connection::Default(wayland_connection),
+        );
+
+
         // Initialize surfman
-        let connection = Connection::new().expect("Failed to create connection");
+        // let connection = Connection::new().expect("Failed to create connection");
         let adapter = connection
             .create_software_adapter()
             .expect("Failed to create adapter");
@@ -26,10 +38,10 @@ impl QServoWindowHeadless {
         let webrender_surfman = WebrenderSurfman::create(&connection, &adapter, surface_type)
             .expect("Failed to create WR surfman");
 
-        Self {
+        Ok(Self {
             webrender_surfman,
             animation_state: Cell::new(AnimationState::Idle),
-        }
+        })
     }
 }
 
