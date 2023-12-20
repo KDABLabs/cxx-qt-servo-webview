@@ -102,17 +102,17 @@ impl Drop for QServoSwapChain {
 
 impl QServoSwapChain {
     pub(crate) fn new(swap_chain: SwapChain<Device>, connection: Connection) -> Self {
-        use surfman::platform::generic::multi;
-        use surfman::platform::unix::wayland;
-        let native_connection = wayland::connection::NativeConnection::current()
-            .expect("Failed to bootstrap native connection");
-        let wayland_connection = unsafe {
-            wayland::connection::Connection::from_native_connection(native_connection)
-                .expect("Failed to bootstrap wayland connection")
-        };
-        let connection = multi::connection::Connection::Default(
-            multi::connection::Connection::Default(wayland_connection),
-        );
+        // use surfman::platform::generic::multi;
+        // use surfman::platform::unix::wayland;
+        // let native_connection = wayland::connection::NativeConnection::current()
+        //     .expect("Failed to bootstrap native connection");
+        // let wayland_connection = unsafe {
+        //     wayland::connection::Connection::from_native_connection(native_connection)
+        //         .expect("Failed to bootstrap wayland connection")
+        // };
+        // let connection = multi::connection::Connection::Default(
+        //     multi::connection::Connection::Default(wayland_connection),
+        // );
         let adapter = connection
             .create_software_adapter()
             .expect("Failed to create adapter");

@@ -139,6 +139,9 @@ impl qobject::QServoRenderer {
                 if let Ok(surface) = surface {
                     println!("render surface? {}", surface.is_some());
 
+                    swap_chain.device.make_context_current(&swap_chain.context).unwrap();
+                    println!("make context current");
+
                     let texture = surface.map(|surface| {
                         swap_chain
                             .device
@@ -176,7 +179,66 @@ impl qobject::QServoRenderer {
 
             self.as_mut().rust_mut().swap_chain = Some(swap_chain);
         }
+    }
 
+    unsafe fn synchronize(mut self: Pin<&mut Self>, item: *mut qobject::QQuickFramebufferObject) {
+        println!("sync start");
+        let webview_ptr = item as *mut ServoWebView;
+        if let Some(webview_ref) = webview_ptr.as_mut() {
+            let mut webview = Pin::new_unchecked(webview_ref);
+
+            if self.as_ref().sender.is_none() {
+                let qt_thread = webview.qt_thread();
+                let (sender, receiver) = mpsc::channel();
+
+                use surfman::platform::generic::multi;
+                use surfman::platform::unix::wayland;
+                let native_connection = wayland::connection::NativeConnection::current()
+                    .expect("Failed to bootstrap native connection");
+                let wayland_connection = unsafe {
+                    wayland::connection::Connection::from_native_connection(native_connection)
+                        .expect("Failed to bootstrap wayland connection")
+                };
+                let connection = multi::connection::Connection::Default(
+                    multi::connection::Connection::Default(wayland_connection),
+                );
+
+                std::thread::spawn(move || QServoThread::new(receiver, qt_thread, Some(connection)).run());
+
+                self.as_mut().rust_mut().sender = Some(sender);
+            }
+
+            // Check if we have a new URL
+            let url = webview.as_ref().url().clone();
+            if url != self.url {
+                self.as_mut().rust_mut().url = url;
+
+                let servo_url = ServoUrl::from_url(url::Url::try_from(&self.url).unwrap());
+                self.as_ref()
+                    .sender
+                    .as_ref()
+                    .unwrap()
+                    .send(QServoMessage::Url(servo_url))
+                    .unwrap();
+
+                // Clear any favicon
+                webview.as_mut().set_favicon_url(QUrl::default());
+            }
+
+            // Process any pending events
+            self.as_ref()
+                .sender
+                .as_ref()
+                .unwrap()
+                .send(QServoMessage::Heartbeat)
+                .unwrap();
+        }
+
+        println!("sync end");
+    }
+
+
+    // fn render(mut self: Pin<&mut Self>) {
         // println!("going to recomposite");
 
         // Ask for a frame to be rendered
@@ -215,7 +277,7 @@ impl qobject::QServoRenderer {
 
         // Clear and onto the next frame
         // self.as_mut().rust_mut().servo.as_mut().unwrap().present();
-    }
+    // }
 
     // unsafe fn synchronize(mut self: Pin<&mut Self>, item: *mut qobject::QQuickFramebufferObject) {
     //     println!("sync start");
@@ -264,49 +326,6 @@ impl qobject::QServoRenderer {
 
     //     println!("sync end");
     // }
-
-    unsafe fn synchronize(mut self: Pin<&mut Self>, item: *mut qobject::QQuickFramebufferObject) {
-        println!("sync start");
-        let webview_ptr = item as *mut ServoWebView;
-        if let Some(webview_ref) = webview_ptr.as_mut() {
-            let mut webview = Pin::new_unchecked(webview_ref);
-
-            if self.as_ref().sender.is_none() {
-                let qt_thread = webview.qt_thread();
-                let (sender, receiver) = mpsc::channel();
-                std::thread::spawn(move || QServoThread::new(receiver, qt_thread).run());
-
-                self.as_mut().rust_mut().sender = Some(sender);
-            }
-
-            // Check if we have a new URL
-            let url = webview.as_ref().url().clone();
-            if url != self.url {
-                self.as_mut().rust_mut().url = url;
-
-                let servo_url = ServoUrl::from_url(url::Url::try_from(&self.url).unwrap());
-                self.as_ref()
-                    .sender
-                    .as_ref()
-                    .unwrap()
-                    .send(QServoMessage::Url(servo_url))
-                    .unwrap();
-
-                // Clear any favicon
-                webview.as_mut().set_favicon_url(QUrl::default());
-            }
-
-            // Process any pending events
-            self.as_ref()
-                .sender
-                .as_ref()
-                .unwrap()
-                .send(QServoMessage::Heartbeat)
-                .unwrap();
-        }
-
-        println!("sync end");
-    }
 
     // fn init_servo(mut self: Pin<&mut Self>, mut webview: Pin<&mut ServoWebView>) -> bool {
     //     let event_loop_waker = QServoEventsLoopWaker::new(webview.as_mut().qt_thread());

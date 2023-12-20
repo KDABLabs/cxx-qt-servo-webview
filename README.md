@@ -32,3 +32,16 @@ git clone servo
 cd servo
 git checkout 117d59d393cf7926063e8723934fec97fd61d713
 ```
+
+# design
+
+```
+ServoWebView
+  - QQuickItem
+  - provides QML API for URLs etc
+  - Creates and syncs to a QServoGLRenderNode
+
+QServoGLRenderNode
+  - contains the actual servo engine
+  - on render initialises webrender with the OpenGL context
+```

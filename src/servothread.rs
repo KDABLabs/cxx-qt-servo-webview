@@ -52,25 +52,26 @@ impl QServoThread {
     pub(crate) fn new(
         receiver: Receiver<QServoMessage>,
         qt_thread: CxxQtThread<ServoWebView>,
+        connection: Option<Connection>,
     ) -> Self {
         let event_loop_waker = QServoEventsLoopWaker::new(qt_thread.clone());
         let embedder = Box::new(QServoEmbedder::new(event_loop_waker.clone_box()));
 
         // TODO: have real width and height later
-        let mut found_window = None;
-        while found_window.is_none() {
-            println!("waiting for window");
-            match QServoWindowHeadless::new(Size2D::new(400, 400)) {
-                Ok(window) => {
-                    found_window = Some(window);
-                    break;
-                }
-                Err(err) => println!("{err:?}"),
-            }
+        // let mut found_window = None;
+        // while found_window.is_none() {
+        //     println!("waiting for window");
+        let found_window = QServoWindowHeadless::new(Size2D::new(400, 400), connection).ok();
+        //         Ok(window) => {
+        //             found_window = Some(window);
+        //             break;
+        //         }
+        //         Err(err) => println!("{err:?}"),
+        //     }
 
-            std::thread::sleep(Duration::from_millis(16));
-        }
-        println!("found window");
+        //     std::thread::sleep(Duration::from_millis(16));
+        // }
+        // println!("found window");
 
         let window = Rc::new(found_window.unwrap());
         let user_agent = None;
