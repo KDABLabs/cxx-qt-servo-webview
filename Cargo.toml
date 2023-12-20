@@ -26,3 +26,13 @@ cxx-qt-build = { version = "0.6", features = [ "link_qt_object_files" ] }
 [patch."https://github.com/servo/webrender"]
 webrender = { path = "../servo/third_party/webrender/webrender" }
 webrender_api = { path = "../servo/third_party/webrender/webrender_api" }
+
+# Use a custom CXX-Qt version
+[patch.crates-io]
+cxx-qt = { git = "https://github.com/ahayzen-kdab/cxx-qt.git", branch = "qobject-optional" }
+cxx-qt-build = { git = "https://github.com/ahayzen-kdab/cxx-qt.git", branch = "qobject-optional" }
+cxx-qt-gen = { git = "https://github.com/ahayzen-kdab/cxx-qt.git", branch = "qobject-optional" }
+cxx-qt-macro = { git = "https://github.com/ahayzen-kdab/cxx-qt.git", branch = "qobject-optional" }
+cxx-qt-lib = { git = "https://github.com/ahayzen-kdab/cxx-qt.git", branch = "qobject-optional" }
+cxx-qt-lib-headers = { git = "https://github.com/ahayzen-kdab/cxx-qt.git", branch = "qobject-optional" }
+qt-build-utils = { git = "https://github.com/ahayzen-kdab/cxx-qt.git", branch = "qobject-optional" }

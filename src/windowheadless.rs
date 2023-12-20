@@ -16,20 +16,20 @@ impl QServoWindowHeadless {
     pub fn new(
         size: Size2D<u32, DeviceIndependentPixel>,
     ) -> Result<Self, SurfmanError> {
-        use surfman::platform::generic::multi;
-        use surfman::platform::unix::wayland;
-        let native_connection = wayland::connection::NativeConnection::current()?;
-        let wayland_connection = unsafe {
-            wayland::connection::Connection::from_native_connection(native_connection)
-                .expect("Failed to bootstrap wayland connection")
-        };
-        let connection = multi::connection::Connection::Default(
-            multi::connection::Connection::Default(wayland_connection),
-        );
+        // use surfman::platform::generic::multi;
+        // use surfman::platform::unix::wayland;
+        // let native_connection = wayland::connection::NativeConnection::current()?;
+        // let wayland_connection = unsafe {
+        //     wayland::connection::Connection::from_native_connection(native_connection)
+        //         .expect("Failed to bootstrap wayland connection")
+        // };
+        // let connection = multi::connection::Connection::Default(
+        //     multi::connection::Connection::Default(wayland_connection),
+        // );
 
 
         // Initialize surfman
-        // let connection = Connection::new().expect("Failed to create connection");
+        let connection = Connection::new().expect("Failed to create connection");
         let adapter = connection
             .create_software_adapter()
             .expect("Failed to create adapter");
