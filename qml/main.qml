@@ -7,10 +7,10 @@ import com.kdab.servo 1.0
 
 Window {
     id: root
-    height: 800
+    height: 16 + 10 + 20 + 10 + 420
     title: qsTr("Servo CXX-Qt")
     visible: true
-    width: 800
+    width: 420
 
     /*
     onVisibleChanged: {
@@ -53,6 +53,7 @@ Window {
         }
 
         RowLayout {
+            height: 20
             Layout.fillWidth: true
             spacing: 10
 

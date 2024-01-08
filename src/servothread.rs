@@ -61,6 +61,8 @@ impl QServoThread {
         // let mut found_window = None;
         // while found_window.is_none() {
         //     println!("waiting for window");
+
+        // let connection = Some(Connection::new().expect("Failed to create connection"));
         let found_window = QServoWindowHeadless::new(Size2D::new(400, 400), connection).ok();
         //         Ok(window) => {
         //             found_window = Some(window);
@@ -135,21 +137,26 @@ impl QServoThread {
                     }
                 }
                 QServoMessage::BorrowSurface(sender, receiver) => {
-                    self.servo.recomposite();
-
                     let surfman = self.servo.window().webrender_surfman();
                     let swap_chain = surfman.swap_chain().unwrap();
+
+                    println!("recomposite!");
+                    self.servo.recomposite();
+
                     let surface = swap_chain.take_surface();
 
                     println!("sending surface: {}", surface.is_some());
                     sender.send(surface).unwrap();
 
+                    println!("waiting for surface return");
                     let surface = receiver.recv().unwrap();
 
+                    println!("returned surface, recycling");
                     if let Some(surface) = surface {
                         swap_chain.recycle_surface(surface);
                     }
 
+                    println!("present!");
                     self.servo.present();
                 }
                 QServoMessage::Heartbeat => {
@@ -179,19 +186,21 @@ impl QServoThread {
                     let browser_events = self.browser.get_events();
                     self.servo.handle_events(browser_events);
 
-                    self.servo.recomposite();
+                    println!("heaatbeat!");
 
-                    let surfman = self.servo.window().webrender_surfman();
-                    let swap_chain = surfman.swap_chain().unwrap();
-                    let surface = swap_chain.take_surface();
+                    // self.servo.recomposite();
 
-                    println!("heartbeat: {}", surface.is_some());
+                    // let surfman = self.servo.window().webrender_surfman();
+                    // let swap_chain = surfman.swap_chain().unwrap();
+                    // let surface = swap_chain.take_surface();
 
-                    if let Some(surface) = surface {
-                        swap_chain.recycle_surface(surface);
-                    }
+                    // println!("heartbeat: {}", surface.is_some());
 
-                    self.servo.present();
+                    // if let Some(surface) = surface {
+                    //     swap_chain.recycle_surface(surface);
+                    // }
+
+                    // self.servo.present();
                 }
                 QServoMessage::Quit => break,
             }

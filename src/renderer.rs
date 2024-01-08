@@ -81,6 +81,7 @@ use std::{
     sync::mpsc::{self, Receiver, Sender},
     time::Duration,
 };
+use surfman::{Context, Device};
 
 #[derive(Default)]
 pub struct QServoRendererRust {
@@ -91,11 +92,15 @@ pub struct QServoRendererRust {
     url: QUrl,
     sender: Option<Sender<QServoMessage>>,
     swap_chain: Option<QServoSwapChain>,
+    gl: Option<(Device, Context)>,
 }
 
 impl Drop for QServoRendererRust {
     fn drop(&mut self) {
         println!("dropping!");
+        if let Some((device, mut context)) = self.gl.take() {
+            device.destroy_context(&mut context).unwrap();
+        }
     }
 }
 
@@ -127,6 +132,10 @@ impl qobject::QServoRenderer {
         // Build a source fbo
         if let Some(mut swap_chain) = self.as_mut().rust_mut().swap_chain.take() {
             {
+                // let current = swap_chain.device.make_context_current(&swap_chain.context);
+                // println!("make context current: {}", current.is_ok());
+
+                // BORROW SURFACE ROUTE
                 let (take_sender, take_receiver) = mpsc::channel();
                 let (recycle_sender, recycle_receiver) = mpsc::channel();
                 self.sender
@@ -139,26 +148,100 @@ impl qobject::QServoRenderer {
                 if let Ok(surface) = surface {
                     println!("render surface? {}", surface.is_some());
 
-                    swap_chain.device.make_context_current(&swap_chain.context).unwrap();
-                    println!("make context current");
+                    // let current = swap_chain.device.make_context_current(&swap_chain.context);
+                    // println!("make context current: {}", current.is_ok());
 
-                    let texture = surface.map(|surface| {
-                        swap_chain
-                            .device
-                            .create_surface_texture(&mut swap_chain.context, surface)
-                            .unwrap()
-                    });
-                    println!("texture: {}", texture.is_some());
+                    // use surfman::platform::generic::multi;
+                    // use surfman::platform::unix::wayland;
+                    // let native_connection = wayland::connection::NativeConnection::current()
+                    //     .expect("Failed to bootstrap native connection");
+                    // let wayland_connection = unsafe {
+                    //     wayland::connection::Connection::from_native_connection(native_connection)
+                    //         .expect("Failed to bootstrap wayland connection")
+                    // };
+                    // let connection = multi::connection::Connection::Default(
+                    //     multi::connection::Connection::Default(wayland_connection),
+                    // );
+                    // let adapter = connection
+                    //     .create_software_adapter()
+                    //     .expect("Failed to create adapter");
+                    // let device = connection
+                    //     .create_device(&adapter)
+                    //     .expect("Failed to bootstrap surfman device");
+                    // let native_context = {
+                    //     use surfman::platform::generic::multi;
+                    //     use surfman::platform::unix::wayland;
+                    //     multi::context::NativeContext::Default(
+                    //         multi::context::NativeContext::Default(
+                    //             wayland::context::NativeContext::current()
+                    //                 .expect("Failed to bootstrap native context"),
+                    //         ),
+                    //     )
+                    // };
+                    // let mut context = unsafe {
+                    //     device
+                    //         .create_context_from_native_context(native_context)
+                    //         .expect("Failed to bootstrap surfman context")
+                    // };
 
-                    if let Some(texture) = texture {
-                        let surface = swap_chain
-                            .device
-                            .destroy_surface_texture(&mut swap_chain.context, texture);
-                        recycle_sender.send(surface.ok()).unwrap();
-                    } else {
-                        recycle_sender.send(None).unwrap();
+                    let fbo_target = self.as_ref().framebuffer_object();
+                    if let Some((ref mut device, ref mut context)) =
+                        self.as_mut().rust_mut().gl.as_mut()
+                    {
+                        let texture = surface.map(|surface| {
+                            device.create_surface_texture(context, surface).unwrap()
+                        });
+                        println!("texture: {}", texture.is_some());
+
+                        if let Some(texture) = texture.as_ref() {
+                            let object = device.surface_texture_object(texture) as u32;
+                            let target = device.surface_gl_texture_target() as u32;
+
+                            let fbo_source =
+                                qobject::fbo_from_texture(object, target, QSize::new(400, 400));
+                            // Find the target fbo
+                            // let fbo_target = self.as_ref().framebuffer_object();
+
+                            println!("render!");
+
+                            // Blit it
+                            unsafe { qobject::blit_framebuffer(fbo_target, fbo_source) };
+                        }
+
+                        if let Some(texture) = texture {
+                            let surface = device.destroy_surface_texture(context, texture);
+                            recycle_sender.send(surface.ok()).unwrap();
+                        } else {
+                            recycle_sender.send(None).unwrap();
+                        }
                     }
                 }
+
+                // // SWAP CHAIN ROUTE
+                // use surfman::chains::SwapChainAPI;
+                // let current = swap_chain.device.make_context_current(&swap_chain.context);
+                // println!("make context current: {}", current.is_ok());
+                // let surface = swap_chain.swap_chain.take_surface();
+                // if let Some(surface) = surface {
+                //     println!("render surface?");
+
+                //     let texture =
+                //         swap_chain
+                //             .device
+                //             .create_surface_texture(&mut swap_chain.context, surface);
+                //     println!("texture: {}", texture.is_ok());
+
+                //     if let Ok(texture) = texture {
+                //         let surface = swap_chain
+                //             .device
+                //             .destroy_surface_texture(&mut swap_chain.context, texture);
+                //         swap_chain.swap_chain.recycle_surface(surface.unwrap());
+                //         // recycle_sender.send(surface.ok()).unwrap();
+                //     } else {
+                //         // swap_chain.swap_chain.recycle_surface(surface);
+                //         // recycle_sender.send(None).unwrap();
+                //     }
+                // }
 
                 // let mut texture = swap_chain.take_surface_as_texture();
 
@@ -203,7 +286,9 @@ impl qobject::QServoRenderer {
                     multi::connection::Connection::Default(wayland_connection),
                 );
 
-                std::thread::spawn(move || QServoThread::new(receiver, qt_thread, Some(connection)).run());
+                std::thread::spawn(move || {
+                    QServoThread::new(receiver, qt_thread, Some(connection)).run()
+                });
 
                 self.as_mut().rust_mut().sender = Some(sender);
             }
@@ -237,46 +322,45 @@ impl qobject::QServoRenderer {
         println!("sync end");
     }
 
-
     // fn render(mut self: Pin<&mut Self>) {
-        // println!("going to recomposite");
+    // println!("going to recomposite");
 
-        // Ask for a frame to be rendered
-        // self.as_mut()
-        //     .rust_mut()
-        //     .servo
-        //     .as_mut()
-        //     .unwrap()
-        //     .recomposite();
+    // Ask for a frame to be rendered
+    // self.as_mut()
+    //     .rust_mut()
+    //     .servo
+    //     .as_mut()
+    //     .unwrap()
+    //     .recomposite();
 
-        // {
-        //     // Build a source fbo
-        //     let swap_chain =
-        //         QServoSwapChain::new(self.servo.as_ref().unwrap().window().webrender_surfman());
-        //     let texture = swap_chain.take_surface_as_texture();
+    // {
+    //     // Build a source fbo
+    //     let swap_chain =
+    //         QServoSwapChain::new(self.servo.as_ref().unwrap().window().webrender_surfman());
+    //     let texture = swap_chain.take_surface_as_texture();
 
-        //     if texture.has_texture() {
-        //         let fbo_source = qobject::fbo_from_texture(
-        //             texture.object(),
-        //             texture.target(),
-        //             QSize::new(400, 400),
-        //         );
-        //         // Find the target fbo
-        //         let fbo_target = self.framebuffer_object();
+    //     if texture.has_texture() {
+    //         let fbo_source = qobject::fbo_from_texture(
+    //             texture.object(),
+    //             texture.target(),
+    //             QSize::new(400, 400),
+    //         );
+    //         // Find the target fbo
+    //         let fbo_target = self.framebuffer_object();
 
-        //         println!("render!");
+    //         println!("render!");
 
-        //         // Blit it
-        //         unsafe { qobject::blit_framebuffer(fbo_target, fbo_source) };
-        //     } else {
-        //         println!("no texture, continue");
-        //     }
-        // }
+    //         // Blit it
+    //         unsafe { qobject::blit_framebuffer(fbo_target, fbo_source) };
+    //     } else {
+    //         println!("no texture, continue");
+    //     }
+    // }
 
-        // println!("going to present");
+    // println!("going to present");
 
-        // Clear and onto the next frame
-        // self.as_mut().rust_mut().servo.as_mut().unwrap().present();
+    // Clear and onto the next frame
+    // self.as_mut().rust_mut().servo.as_mut().unwrap().present();
     // }
 
     // unsafe fn synchronize(mut self: Pin<&mut Self>, item: *mut qobject::QQuickFramebufferObject) {
@@ -418,5 +502,41 @@ impl qobject::QServoRenderer {
 }
 
 impl cxx_qt::Initialize for qobject::QServoRenderer {
-    fn initialize(self: core::pin::Pin<&mut Self>) {}
+    fn initialize(mut self: core::pin::Pin<&mut Self>) {
+        use surfman::platform::generic::multi;
+        use surfman::platform::unix::wayland;
+        let native_connection = wayland::connection::NativeConnection::current()
+            .expect("Failed to bootstrap native connection");
+        let wayland_connection = unsafe {
+            wayland::connection::Connection::from_native_connection(native_connection)
+                .expect("Failed to bootstrap wayland connection")
+        };
+        let connection = multi::connection::Connection::Default(
+            multi::connection::Connection::Default(wayland_connection),
+        );
+        let adapter = connection
+            .create_software_adapter()
+            .expect("Failed to create adapter");
+        let device = connection
+            .create_device(&adapter)
+            .expect("Failed to bootstrap surfman device");
+        let native_context = {
+            use surfman::platform::generic::multi;
+            use surfman::platform::unix::wayland;
+            let current = wayland::context::NativeContext::current()
+                .expect("Failed to bootstrap native context");
+            println!(
+                "QServoRenderer init, native context: {:?}",
+                current.egl_context
+            );
+            multi::context::NativeContext::Default(multi::context::NativeContext::Default(current))
+        };
+        let mut context = unsafe {
+            device
+                .create_context_from_native_context(native_context)
+                .expect("Failed to bootstrap surfman context")
+        };
+
+        self.as_mut().rust_mut().gl = Some((device, context));
+    }
 }

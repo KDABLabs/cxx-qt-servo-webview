@@ -36,3 +36,4 @@ cxx-qt-macro = { git = "https://github.com/ahayzen-kdab/cxx-qt.git", branch = "q
 cxx-qt-lib = { git = "https://github.com/ahayzen-kdab/cxx-qt.git", branch = "qobject-optional" }
 cxx-qt-lib-headers = { git = "https://github.com/ahayzen-kdab/cxx-qt.git", branch = "qobject-optional" }
 qt-build-utils = { git = "https://github.com/ahayzen-kdab/cxx-qt.git", branch = "qobject-optional" }
+surfman = { path = "../surfman/surfman" }

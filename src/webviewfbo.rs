@@ -12,6 +12,9 @@ pub(crate) mod qobject {
         include!("helpers.h");
         // TODO: describe this with a custom type
         type QQuickFramebufferObjectRenderer;
+
+        #[cxx_name = "setMirrorVertically"]
+        fn set_mirror_vertically(self: Pin<&mut ServoWebView>, enable: bool);
     }
 
     unsafe extern "RustQt" {
@@ -56,7 +59,9 @@ impl qobject::ServoWebView {
 }
 
 impl cxx_qt::Initialize for qobject::ServoWebView {
-    fn initialize(self: Pin<&mut Self>) {
+    fn initialize(mut self: Pin<&mut Self>) {
+        self.as_mut().set_mirror_vertically(true);
+
         // When the URL changes trigger QQuickFramebufferObject::update
         // which then triggers QQuickFramebufferObject::Renderer::synchronize
         self.on_url_changed(|qobject| {

@@ -13,7 +13,7 @@ mod windowheadless;
 
 fn main() {
     std::env::set_var("QSG_RHI_BACKEND", "opengl");
-    std::env::set_var("QSG_RENDER_LOOP", "basic");
+    // std::env::set_var("QSG_RENDER_LOOP", "basic");
 
     let mut app = QGuiApplication::new();
     let mut engine = QQmlApplicationEngine::new();
