@@ -287,7 +287,7 @@ impl qobject::QServoRenderer {
                 );
 
                 std::thread::spawn(move || {
-                    QServoThread::new(receiver, qt_thread, Some(connection)).run()
+                    QServoThread::new(receiver, qt_thread, connection).run()
                 });
 
                 self.as_mut().rust_mut().sender = Some(sender);

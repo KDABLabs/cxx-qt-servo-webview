@@ -7,10 +7,11 @@ use std::cell::Cell;
 
 use servo::{
     compositing::windowing::{AnimationState, EmbedderCoordinates, WindowMethods},
-    euclid::{Point2D, Scale, Size2D, Rect},
-    webrender_surfman::WebrenderSurfman, servo_geometry::DeviceIndependentPixel,
+    euclid::{Point2D, Rect, Scale, Size2D},
+    servo_geometry::DeviceIndependentPixel,
+    webrender_surfman::WebrenderSurfman,
 };
-use surfman::{Connection, SurfaceType, Error as SurfmanError};
+use surfman::{Connection, SurfaceType};
 
 pub(crate) struct QServoWindowHeadless {
     animation_state: Cell<AnimationState>,
@@ -18,26 +19,8 @@ pub(crate) struct QServoWindowHeadless {
 }
 
 impl QServoWindowHeadless {
-    pub fn new(
-        size: Size2D<u32, DeviceIndependentPixel>,
-        mut connection: Option<Connection>
-    ) -> Result<Self, SurfmanError> {
-        if connection.is_none() {
-            use surfman::platform::generic::multi;
-            use surfman::platform::unix::wayland;
-            let native_connection = wayland::connection::NativeConnection::current()?;
-            let wayland_connection = unsafe {
-                wayland::connection::Connection::from_native_connection(native_connection)
-                    .expect("Failed to bootstrap wayland connection")
-            };
-            connection = Some(multi::connection::Connection::Default(
-                multi::connection::Connection::Default(wayland_connection),
-            ));
-        }
-        let connection = connection.unwrap();
-
+    pub fn new(size: Size2D<u32, DeviceIndependentPixel>, connection: Connection) -> Self {
         // Initialize surfman
-        // let connection = Connection::new().expect("Failed to create connection");
         let adapter = connection
             .create_software_adapter()
             .expect("Failed to create adapter");
@@ -46,10 +29,10 @@ impl QServoWindowHeadless {
         let webrender_surfman = WebrenderSurfman::create(&connection, &adapter, surface_type)
             .expect("Failed to create WR surfman");
 
-        Ok(Self {
+        Self {
             webrender_surfman,
             animation_state: Cell::new(AnimationState::Idle),
-        })
+        }
     }
 }
 
