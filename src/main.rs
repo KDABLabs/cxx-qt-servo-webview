@@ -15,8 +15,8 @@ mod webviewfbo;
 mod windowheadless;
 
 fn main() {
+    // We need the OpenGL backend for QQuickFramebufferObject
     std::env::set_var("QSG_RHI_BACKEND", "opengl");
-    // std::env::set_var("QSG_RENDER_LOOP", "basic");
 
     let mut app = QGuiApplication::new();
     let mut engine = QQmlApplicationEngine::new();
