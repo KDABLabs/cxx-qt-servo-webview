@@ -12,19 +12,10 @@ import com.kdab.servo 1.0
 
 Window {
     id: root
-    height: 16 + 10 + 20 + 10 + 420
+    height: 10 + 16 + 10 + 20 + 10 + 400 + 10
     title: qsTr("Servo CXX-Qt")
     visible: true
     width: 420
-
-    /*
-    onVisibleChanged: {
-        if (visible) {
-            console.warn("starting webview");
-            webView.init();
-        }
-    }
-    */
 
     ColumnLayout {
         anchors.fill: parent
@@ -71,7 +62,6 @@ Window {
             Button {
                 text: qsTr("Go")
 
-                //onClicked: webView.active = true
                 onClicked: webView.url = textInputUrl.text
             }
         }
@@ -80,22 +70,8 @@ Window {
             id: webView
             Layout.fillHeight: true
             Layout.fillWidth: true
-            url: "file:///var/home/andrew/Projects/servo/servo/tests/html/about-mozilla.html"
+            url: "https://servo.org/"
         }
-
-        /*
-        Loader {
-            id: webView
-            active: false
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-            sourceComponent: Component {
-                ServoWebView {
-                    url: "file:///var/home/andrew/Projects/servo/servo/tests/html/about-mozilla.html"
-                }
-            }
-        }
-        */
     }
 
     BusyIndicator {
