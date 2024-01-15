@@ -95,6 +95,12 @@ pub struct QServoRendererRust {
 
 impl Drop for QServoRendererRust {
     fn drop(&mut self) {
+        self.sender
+            .as_ref()
+            .unwrap()
+            .send(QServoMessage::Quit)
+            .unwrap();
+
         if let Some((device, mut context)) = self.qt_gl.take() {
             device.destroy_context(&mut context).unwrap();
         }

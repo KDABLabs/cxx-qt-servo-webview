@@ -176,6 +176,8 @@ impl QServoThread {
                 QServoMessage::Quit => break,
             }
         }
+
+        println!("quiting!");
         self.servo.handle_events(vec![EmbedderEvent::Quit]);
     }
 }
