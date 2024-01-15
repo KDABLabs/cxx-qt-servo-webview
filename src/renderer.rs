@@ -62,7 +62,6 @@ use crate::{
     embedder::QServoEmbedder,
     events_loop::QServoEventsLoopWaker,
     servothread::{QServoMessage, QServoThread},
-    swapchain::QServoSwapChain,
     webviewfbo::qobject::ServoWebView,
     windowheadless::QServoWindowHeadless,
 };

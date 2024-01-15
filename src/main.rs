@@ -8,7 +8,6 @@ use cxx_qt_lib::{QGuiApplication, QQmlApplicationEngine, QUrl};
 mod browser;
 mod embedder;
 mod events_loop;
-mod swapchain;
 mod renderer;
 mod servothread;
 mod webviewfbo;
