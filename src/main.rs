@@ -4,11 +4,9 @@ mod browser;
 mod embedder;
 mod events_loop;
 mod swapchain;
-// mod webview;
 mod renderer;
 mod servothread;
 mod webviewfbo;
-// mod window;
 mod windowheadless;
 
 fn main() {
