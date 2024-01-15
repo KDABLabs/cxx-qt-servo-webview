@@ -40,12 +40,7 @@ pub(crate) mod qobject {
     }
 
     unsafe extern "RustQt" {
-        // #[qobject]
-        // FIXME: Cannot use CXX-Qt features with no qobject macro
-        // or cannot add multiple bases
-        // #[base = "QQuickFramebufferObjectRendererWithQObject"]
         #[base = "QQuickFramebufferObject::Renderer"]
-        // #[base = "QObject"]
         type QServoRenderer = super::QServoRendererRust;
 
         #[inherit]

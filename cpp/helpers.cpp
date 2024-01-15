@@ -11,17 +11,6 @@
 #include <QOpenGLContext>
 #include <QOpenGLFunctions>
 
-
-QQuickFramebufferObjectRendererWithQObject::QQuickFramebufferObjectRendererWithQObject()
-    : QQuickFramebufferObjectRenderer()
-    , QObject(nullptr)
-{
-}
-
-QQuickFramebufferObjectRendererWithQObject::~QQuickFramebufferObjectRendererWithQObject()
-{
-}
-
 void
 blitFramebuffer(QOpenGLFramebufferObject* target, QOpenGLFramebufferObject* source)
 {
