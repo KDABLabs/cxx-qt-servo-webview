@@ -12,7 +12,7 @@ fn main() {
         .qt_module("OpenGL")
         .qml_module(QmlModule {
             uri: "com.kdab.servo",
-            rust_files: &["src/webviewfbo.rs"],
+            rust_files: &["src/webview.rs"],
             qml_files: &["qml/main.qml"],
             ..Default::default()
         })

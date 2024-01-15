@@ -6,7 +6,7 @@
 use cxx_qt::CxxQtThread;
 use servo::embedder_traits::EventLoopWaker;
 
-use crate::webviewfbo::qobject::ServoWebView;
+use crate::webview::qobject::ServoWebView;
 
 pub(crate) struct QServoEventsLoopWaker {
     qt_loop: CxxQtThread<ServoWebView>,

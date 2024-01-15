@@ -62,7 +62,7 @@ use crate::{
     embedder::QServoEmbedder,
     events_loop::QServoEventsLoopWaker,
     servothread::{QServoMessage, QServoThread},
-    webviewfbo::qobject::ServoWebView,
+    webview::qobject::ServoWebView,
     windowheadless::QServoWindowHeadless,
 };
 use core::pin::Pin;
@@ -127,7 +127,8 @@ impl qobject::QServoRenderer {
             // Find the target fbo
             let fbo_target = self.as_ref().framebuffer_object();
 
-            if let Some((ref mut device, ref mut context)) = self.as_mut().rust_mut().qt_gl.as_mut() {
+            if let Some((ref mut device, ref mut context)) = self.as_mut().rust_mut().qt_gl.as_mut()
+            {
                 let texture =
                     surface.map(|surface| device.create_surface_texture(context, surface).unwrap());
                 println!("texture: {}", texture.is_some());

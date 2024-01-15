@@ -22,7 +22,7 @@ use surfman::{chains::SwapChain, Connection, Device, Surface};
 
 use crate::{
     browser::QServoBrowser, embedder::QServoEmbedder, events_loop::QServoEventsLoopWaker,
-    webviewfbo::qobject::ServoWebView, windowheadless::QServoWindowHeadless,
+    webview::qobject::ServoWebView, windowheadless::QServoWindowHeadless,
 };
 
 pub(crate) struct SwapChainData {
