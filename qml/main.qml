@@ -1,3 +1,8 @@
+// SPDX-FileCopyrightText: 2024 Klarälvdalens Datakonsult AB, a KDAB Group company <info@kdab.com>
+// SPDX-FileContributor: Andrew Hayzen <andrew.hayzen@kdab.com>
+//
+// SPDX-License-Identifier: MPL-2.0
+
 import QtQuick 2.12
 import QtQuick.Controls 2.12
 import QtQuick.Layouts 1.12

@@ -1,7 +1,13 @@
+# SPDX-FileCopyrightText: 2024 Klarälvdalens Datakonsult AB, a KDAB Group company <info@kdab.com>
+# SPDX-FileContributor: Andrew Hayzen <andrew.hayzen@kdab.com>
+#
+# SPDX-License-Identifier: MPL-2.0
+
 [package]
 name = "cxxqtservo"
 version = "0.1.0"
 edition = "2021"
+license = "MPL-2.0"
 
 [dependencies]
 cxx = "1.0.95"
