@@ -4921,6 +4921,7 @@ dependencies = [
 [[package]]
 name = "surfman"
 version = "0.8.0"
+source = "git+https://github.com/ahayzen-kdab/surfman.git?branch=patched-opengl-assert#e7f5fd5871c7f3473081a233ad60ec98afdfe11a"
 dependencies = [
  "bitflags 1.3.2",
  "cfg_aliases",

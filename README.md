@@ -1,47 +1,36 @@
+# Servo WebView for Qt using CXX-Qt
 
+TODO
 
-# rustc
+# Setup
 
-We need a version of Rust that matches what Servo builds with.
-
-```console
-rustup install nightly-2023-04-01
-rustup default nightly-2023-04-01
-```
-
-Might need
+We need the nightly compiler and a specific version of Servo for now.
 
 ```console
-rustup components add llvm-tools rustc-dev
-```
+rustup install nightly
+rustup default nightly
 
-# cargo.lock
-
-We need to copy the cargo.lock from the servo repository to ensure we have the correct patched versions of crates.
-
-# logging
-
-```
-RUST_LOG="debug" cargo un
-```
-
-# servo
-
-```console
 git clone servo
 cd servo
 git checkout 117d59d393cf7926063e8723934fec97fd61d713
 ```
 
-# design
+# Notes
 
+## cargo.lock
+
+We need to copy the cargo.lock from the servo repository to ensure we have the correct patched versions of crates.
+
+## Logging
+
+```console
+RUST_LOG="debug" cargo run
 ```
-ServoWebView
-  - QQuickItem
-  - provides QML API for URLs etc
-  - Creates and syncs to a QServoGLRenderNode
 
-QServoGLRenderNode
-  - contains the actual servo engine
-  - on render initialises webrender with the OpenGL context
+## Rust
+
+We might need
+
+```console
+rustup components add llvm-tools rustc-dev
 ```
