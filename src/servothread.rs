@@ -139,17 +139,27 @@ impl QServoThread {
                         .unwrap();
 
                     // Present when required
-                    if let Some(present) = response.present {
-                        if present {
-                            println!("present!");
-                            self.servo.present();
-                        }
-                    }
+                    let need_present = response.present.unwrap_or_else(|| false);
 
                     // Servo process browser events
                     let browser_events = self.browser.get_events();
-                    self.servo.handle_events(browser_events);
+                    let need_resize = self.servo.handle_events(browser_events);
 
+                    // If we have resized then we need to force a repaint synchornously
+                    //
+                    // This is the same as Present::Immediate in servoshell
+                    // Resizes are unusual in that we need to repaint synchronously.
+                    // TODO(servo#30049) can we replace this with the simpler Servo::recomposite?
+                    if need_resize {
+                        println!("repaint_synchronously");
+                        self.servo.repaint_synchronously();
+                    }
+
+                    // Present if we resized or need to present
+                    if need_present || need_resize {
+                        println!("present!");
+                        self.servo.present();
+                    }
                     println!("heartbeat!");
                 }
                 QServoMessage::Quit => break,
