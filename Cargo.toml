@@ -30,8 +30,8 @@ cxx-qt-build = { version = "0.6", features = [ "link_qt_object_files" ] }
 # This is required because we want all dependencies that use WebRender to
 # use our vendored version.
 [patch."https://github.com/servo/webrender"]
-webrender = { path = "../servo/third_party/webrender/webrender" }
-webrender_api = { path = "../servo/third_party/webrender/webrender_api" }
+webrender = { path = "./servo/third_party/webrender/webrender" }
+webrender_api = { path = "./servo/third_party/webrender/webrender_api" }
 
 # Use a custom CXX-Qt version
 [patch.crates-io]

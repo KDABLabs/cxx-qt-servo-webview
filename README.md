@@ -11,15 +11,11 @@ TODO
 
 # Setup
 
-We need the nightly compiler and a specific version of Servo for now.
+We need the nightly compiler for now.
 
 ```console
 rustup install nightly
 rustup default nightly
-
-git clone https://github.com/servo/servo.git ../servo
-cd ../servo
-git checkout 117d59d393cf7926063e8723934fec97fd61d713
 ```
 
 # Notes
