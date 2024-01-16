@@ -71,13 +71,13 @@ use surfman::{Context, Device};
 #[derive(Default)]
 pub struct QServoRendererRust {
     url: QUrl,
-    sender: Option<Sender<QServoMessage>>,
+    servo_sender: Option<Sender<QServoMessage>>,
     qt_gl: Option<(Device, Context)>,
 }
 
 impl Drop for QServoRendererRust {
     fn drop(&mut self) {
-        self.sender
+        self.servo_sender
             .as_ref()
             .unwrap()
             .send(QServoMessage::Quit)
@@ -98,7 +98,7 @@ impl qobject::QServoRenderer {
         // Ask to borrow a surface
         let (take_sender, take_receiver) = mpsc::sync_channel(0);
         let (recycle_sender, recycle_receiver) = mpsc::sync_channel(0);
-        self.sender
+        self.servo_sender
             .as_ref()
             .unwrap()
             .send(QServoMessage::BorrowSurface(take_sender, recycle_receiver))
@@ -152,9 +152,9 @@ impl qobject::QServoRenderer {
             let mut webview = Pin::new_unchecked(webview_ref);
 
             // Start the Servo worker thread if there isn't one
-            if self.as_ref().sender.is_none() {
+            if self.as_ref().servo_sender.is_none() {
                 let qt_thread = webview.qt_thread();
-                let (sender, receiver) = mpsc::channel();
+                let (servo_sender, servo_receiver) = mpsc::channel();
 
                 use surfman::platform::generic::multi;
                 use surfman::platform::unix::wayland;
@@ -169,10 +169,10 @@ impl qobject::QServoRenderer {
                 );
 
                 std::thread::spawn(move || {
-                    QServoThread::new(receiver, qt_thread, connection).run()
+                    QServoThread::new(servo_receiver, qt_thread, connection).run()
                 });
 
-                self.as_mut().rust_mut().sender = Some(sender);
+                self.as_mut().rust_mut().servo_sender = Some(servo_sender);
             }
 
             // Check if we have a new URL
@@ -182,7 +182,7 @@ impl qobject::QServoRenderer {
 
                 let servo_url = ServoUrl::from_url(url::Url::try_from(&self.url).unwrap());
                 self.as_ref()
-                    .sender
+                    .servo_sender
                     .as_ref()
                     .unwrap()
                     .send(QServoMessage::Url(servo_url))
@@ -194,7 +194,7 @@ impl qobject::QServoRenderer {
 
             // Process any pending events
             self.as_ref()
-                .sender
+                .servo_sender
                 .as_ref()
                 .unwrap()
                 .send(QServoMessage::Heartbeat)
