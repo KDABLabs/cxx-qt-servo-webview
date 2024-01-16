@@ -58,36 +58,18 @@ pub(crate) mod qobject {
 }
 
 use crate::{
-    browser::QServoBrowser,
-    embedder::QServoEmbedder,
-    events_loop::QServoEventsLoopWaker,
     servothread::{QServoMessage, QServoThread},
     webview::qobject::ServoWebView,
-    windowheadless::QServoWindowHeadless,
 };
 use core::pin::Pin;
 use cxx_qt::{CxxQtType, Threading};
-use cxx_qt_lib::{QSize, QString, QUrl};
-use servo::{
-    compositing::windowing::{EmbedderEvent, WindowMethods},
-    embedder_traits::EventLoopWaker,
-    euclid::Size2D,
-    servo_url::ServoUrl,
-    BrowserId, Servo,
-};
-use std::{
-    rc::Rc,
-    sync::mpsc::{self, Receiver, Sender},
-    time::Duration,
-};
+use cxx_qt_lib::{QSize, QUrl};
+use servo::servo_url::ServoUrl;
+use std::sync::mpsc::{self, Sender};
 use surfman::{Context, Device};
 
 #[derive(Default)]
 pub struct QServoRendererRust {
-    // browser: QServoBrowser,
-    // browser_id: Option<BrowserId>,
-    // // need_preset: bool,
-    // servo: Option<Servo<QServoWindowHeadless>>,
     url: QUrl,
     sender: Option<Sender<QServoMessage>>,
     qt_gl: Option<(Device, Context)>,
@@ -221,143 +203,6 @@ impl qobject::QServoRenderer {
 
         println!("sync end");
     }
-
-    // unsafe fn synchronize(mut self: Pin<&mut Self>, item: *mut qobject::QQuickFramebufferObject) {
-    //     println!("sync start");
-    //     let webview_ptr = item as *mut ServoWebView;
-    //     if let Some(webview_ref) = webview_ptr.as_mut() {
-    //         let mut webview = Pin::new_unchecked(webview_ref);
-
-    //         // Ensure servo has been started
-    //         if self.as_ref().servo.is_none() {
-    //             if !self.as_mut().init_servo(webview.as_mut()) {
-    //                 // TODO: hack to wait for a window
-    //                 return;
-    //             }
-
-    //             println!("created servo");
-    //         }
-
-    //         // Check if we have a new URL
-    //         let url = webview.as_ref().url().clone();
-    //         if url != self.url {
-    //             self.as_mut().rust_mut().url = url;
-
-    //             let servo_url = ServoUrl::from_url(url::Url::try_from(&self.url).unwrap());
-
-    //             // Open a new browser or load the url
-    //             if let Some(browser_id) = self.browser.browser_id() {
-    //                 self.as_mut()
-    //                     .rust_mut()
-    //                     .browser
-    //                     .push_event(EmbedderEvent::LoadUrl(browser_id, servo_url));
-    //             } else {
-    //                 let browser_id = self.as_ref().browser_id.unwrap();
-    //                 self.as_mut()
-    //                     .rust_mut()
-    //                     .browser
-    //                     .push_event(EmbedderEvent::NewBrowser(servo_url, browser_id));
-    //             }
-
-    //             // Clear any favicon
-    //             webview.as_mut().set_favicon_url(QUrl::default());
-    //         }
-
-    //         // Process any pending events
-    //         self.as_mut().handle_events(webview);
-    //     }
-
-    //     println!("sync end");
-    // }
-
-    // fn init_servo(mut self: Pin<&mut Self>, mut webview: Pin<&mut ServoWebView>) -> bool {
-    //     let event_loop_waker = QServoEventsLoopWaker::new(webview.as_mut().qt_thread());
-    //     let embedder = Box::new(QServoEmbedder::new(event_loop_waker.clone_box()));
-
-    //     // TODO: have real width and height later
-    //     let window = QServoWindowHeadless::new(Size2D::new(400, 400));
-    //     // Try later until there is a connection
-    //     if window.is_err() {
-    //         println!("waiting for window");
-    //         // TODO: hack to wait for a window
-    //         event_loop_waker.wake();
-    //         return false;
-    //     }
-
-    //     println!("found window");
-
-    //     let window = Rc::new(window.unwrap());
-    //     let user_agent = None;
-    //     // The in-process interface to Servo.
-    //     //
-    //     // It does everything necessary to render the web, primarily
-    //     // orchestrating the interaction between JavaScript, CSS layout,
-    //     // rendering, and the client window.
-    //     //
-    //     // Clients create a `Servo` instance for a given reference-counted type
-    //     // implementing `WindowMethods`, which is the bridge to whatever
-    //     // application Servo is embedded in. Clients then create an event
-    //     // loop to pump messages between the embedding application and
-    //     // various browser components.
-    //     let servo_data = Servo::new(embedder, window.clone(), user_agent);
-
-    //     self.as_mut().rust_mut().browser_id = Some(servo_data.browser_id);
-
-    //     // Enable logging and store servo instance
-    //     servo_data.servo.setup_logging();
-    //     self.as_mut().rust_mut().servo = Some(servo_data.servo);
-
-    //     // Initialise servo
-    //     event_loop_waker.wake();
-
-    //     true
-    // }
-
-    // pub(crate) fn handle_events(mut self: Pin<&mut Self>, mut webview: Pin<&mut ServoWebView>) {
-    //     println!("handle start");
-    //     if self.servo.is_none() {
-    //         return;
-    //     }
-
-    //     // Browser process servo events
-    //     let servo_events = self
-    //         .as_mut()
-    //         .rust_mut()
-    //         .servo
-    //         .as_mut()
-    //         .unwrap()
-    //         .get_events();
-    //     let response = self
-    //         .as_mut()
-    //         .rust_mut()
-    //         .browser
-    //         .handle_servo_events(servo_events);
-
-    //     // Handle the responses from browser events to Qt
-    //     if let Some(title) = response.title {
-    //         webview.as_mut().set_title(QString::from(&title));
-    //     }
-    //     if let Some(loading) = response.loading {
-    //         webview.as_mut().set_loading(loading);
-    //     }
-    //     if let Some(favicon_url) = response.favicon_url {
-    //         webview.as_mut().set_favicon_url(QUrl::from(&favicon_url));
-    //     }
-    //     // if let Some(present) = response.present {
-    //     //     self.as_mut().rust_mut().need_present = present;
-    //     // }
-
-    //     // Servo process browser events
-    //     let browser_events = self.as_mut().rust_mut().browser.get_events();
-    //     self.as_mut()
-    //         .rust_mut()
-    //         .servo
-    //         .as_mut()
-    //         .unwrap()
-    //         .handle_events(browser_events);
-
-    //     println!("handle end");
-    // }
 }
 
 impl cxx_qt::Initialize for qobject::QServoRenderer {
