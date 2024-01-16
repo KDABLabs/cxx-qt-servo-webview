@@ -9,6 +9,9 @@ pub(crate) mod qobject {
         include!("cxx-qt-lib/qstring.h");
         type QString = cxx_qt_lib::QString;
 
+        include!("cxx-qt-lib/qsizef.h");
+        type QSizeF = cxx_qt_lib::QSizeF;
+
         include!("cxx-qt-lib/qurl.h");
         type QUrl = cxx_qt_lib::QUrl;
 
@@ -35,6 +38,9 @@ pub(crate) mod qobject {
         #[cxx_override]
         #[cxx_name = "createRenderer"]
         fn create_renderer(self: &ServoWebView) -> *mut QQuickFramebufferObjectRenderer;
+
+        #[inherit]
+        fn size(self: &ServoWebView) -> QSizeF;
 
         #[inherit]
         fn update(self: Pin<&mut ServoWebView>);

@@ -64,12 +64,14 @@ use crate::{
 use core::pin::Pin;
 use cxx_qt::{CxxQtType, Threading};
 use cxx_qt_lib::{QSize, QUrl};
+use euclid::Size2D;
 use servo::servo_url::ServoUrl;
 use std::sync::mpsc::{self, Sender};
 use surfman::{Context, Device};
 
 #[derive(Default)]
 pub struct QServoRendererRust {
+    size: QSize,
     url: QUrl,
     servo_sender: Option<Sender<QServoMessage>>,
     qt_gl: Option<(Device, Context)>,
@@ -109,6 +111,7 @@ impl qobject::QServoRenderer {
         if let Ok(Some(surface)) = surface {
             // Find the target fbo
             let fbo_target = self.as_ref().framebuffer_object();
+            let size = self.as_ref().size.clone();
 
             if let Some((ref mut device, ref mut context)) = self.as_mut().rust_mut().qt_gl.as_mut()
             {
@@ -121,7 +124,7 @@ impl qobject::QServoRenderer {
 
                         // Build a source FBO from the texture
                         let fbo_source =
-                            qobject::fbo_from_texture(object, target, QSize::new(400, 400));
+                            qobject::fbo_from_texture(object, target, size);
 
                         println!("render!");
 
@@ -190,6 +193,21 @@ impl qobject::QServoRenderer {
 
                 // Clear any favicon
                 webview.as_mut().set_favicon_url(QUrl::default());
+            }
+
+            let size = webview.as_ref().size().to_size();
+            if size != self.size {
+                self.as_mut().rust_mut().size = size;
+
+                self.as_ref()
+                    .servo_sender
+                    .as_ref()
+                    .unwrap()
+                    .send(QServoMessage::Resize(Size2D::new(
+                        self.size.width() as i32,
+                        self.size.height() as i32,
+                    )))
+                    .unwrap();
             }
 
             // Process any pending events

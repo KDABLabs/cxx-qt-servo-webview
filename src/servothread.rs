@@ -15,7 +15,7 @@ use servo::{
     embedder_traits::EventLoopWaker,
     euclid::Size2D,
     servo_url::ServoUrl,
-    BrowserId, Servo,
+    BrowserId, Servo, style_traits::DevicePixel,
 };
 use surfman::chains::SwapChainAPI;
 use surfman::{Connection, Surface};
@@ -27,6 +27,7 @@ use crate::{
 
 #[derive(Debug)]
 pub(crate) enum QServoMessage {
+    Resize(Size2D<i32, DevicePixel>),
     Url(ServoUrl),
     Heartbeat,
     BorrowSurface(SyncSender<Option<Surface>>, Receiver<Option<Surface>>),
@@ -83,6 +84,13 @@ impl QServoThread {
     pub(crate) fn run(&mut self) {
         while let Ok(msg) = self.receiver.recv() {
             match msg {
+                QServoMessage::Resize(size) => {
+                    let surfman = self.servo.window().webrender_surfman();
+                    surfman
+                        .resize(size.to_untyped().to_i32())
+                        .expect("Failed to resize");
+                    self.browser.push_event(EmbedderEvent::Resize);
+                }
                 QServoMessage::Url(url) => {
                     // Open a new browser or load the url
                     if let Some(browser_id) = self.browser.browser_id() {
@@ -96,10 +104,6 @@ impl QServoThread {
                 QServoMessage::BorrowSurface(sender, receiver) => {
                     let surfman = self.servo.window().webrender_surfman();
                     let swap_chain = surfman.swap_chain().unwrap();
-
-                    // TODO: when do we need to recomposite?
-                    println!("recomposite!");
-                    self.servo.recomposite();
 
                     let surface = swap_chain.take_surface();
 
