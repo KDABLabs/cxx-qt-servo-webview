@@ -113,95 +113,54 @@ impl qobject::QServoRenderer {
     }
 
     fn render(mut self: Pin<&mut Self>) {
-        println!("going to render!");
-
-        // Build a source fbo
-
-        // BORROW SURFACE ROUTE
-        let (take_sender, take_receiver) = mpsc::channel();
-        let (recycle_sender, recycle_receiver) = mpsc::channel();
+        // Ask to borrow a surface
+        let (take_sender, take_receiver) = mpsc::sync_channel(0);
+        let (recycle_sender, recycle_receiver) = mpsc::sync_channel(0);
         self.sender
             .as_ref()
             .unwrap()
             .send(QServoMessage::BorrowSurface(take_sender, recycle_receiver))
             .unwrap();
 
+        // Wait for the response from the background thread
         let surface = take_receiver.recv();
-        if let Ok(surface) = surface {
-            println!("render surface? {}", surface.is_some());
-
+        if let Ok(Some(surface)) = surface {
             // Find the target fbo
             let fbo_target = self.as_ref().framebuffer_object();
 
             if let Some((ref mut device, ref mut context)) = self.as_mut().rust_mut().qt_gl.as_mut()
             {
-                let texture =
-                    surface.map(|surface| device.create_surface_texture(context, surface).unwrap());
-                println!("texture: {}", texture.is_some());
+                // Build a texture from the surface
+                match device.create_surface_texture(context, surface) {
+                    Ok(texture) => {
+                        // Retrieve the texture info
+                        let object = device.surface_texture_object(&texture) as u32;
+                        let target = device.surface_gl_texture_target() as u32;
 
-                if let Some(texture) = texture.as_ref() {
-                    let object = device.surface_texture_object(texture) as u32;
-                    let target = device.surface_gl_texture_target() as u32;
+                        // Build a source FBO from the texture
+                        let fbo_source =
+                            qobject::fbo_from_texture(object, target, QSize::new(400, 400));
 
-                    let fbo_source =
-                        qobject::fbo_from_texture(object, target, QSize::new(400, 400));
+                        println!("render!");
 
-                    println!("render!");
+                        // Blit source FBO to the target FBO
+                        unsafe { qobject::blit_framebuffer(fbo_target, fbo_source) };
 
-                    // Blit it
-                    unsafe { qobject::blit_framebuffer(fbo_target, fbo_source) };
+                        // Destory the texture and return the surface back to the background thread
+                        let surface = device.destroy_surface_texture(context, texture);
+                        recycle_sender.send(surface.ok()).unwrap();
+                    }
+                    Err((_, surface)) => {
+                        // Return the surface back to the background thread
+                        recycle_sender.send(Some(surface)).unwrap();
+                    }
                 }
-
-                if let Some(texture) = texture {
-                    let surface = device.destroy_surface_texture(context, texture);
-                    recycle_sender.send(surface.ok()).unwrap();
-                } else {
-                    recycle_sender.send(None).unwrap();
-                }
+            } else {
+                recycle_sender.send(Some(surface)).unwrap();
             }
+        } else {
+            recycle_sender.send(None).unwrap();
         }
-
-        // // SWAP CHAIN ROUTE
-        // use surfman::chains::SwapChainAPI;
-        // let current = swap_chain.device.make_context_current(&swap_chain.context);
-        // println!("make context current: {}", current.is_ok());
-        // let surface = swap_chain.swap_chain.take_surface();
-        // if let Some(surface) = surface {
-        //     println!("render surface?");
-
-        //     let texture =
-        //         swap_chain
-        //             .device
-        //             .create_surface_texture(&mut swap_chain.context, surface);
-        //     println!("texture: {}", texture.is_ok());
-
-        //     if let Ok(texture) = texture {
-        //         let surface = swap_chain
-        //             .device
-        //             .destroy_surface_texture(&mut swap_chain.context, texture);
-        //         swap_chain.swap_chain.recycle_surface(surface.unwrap());
-        //         // recycle_sender.send(surface.ok()).unwrap();
-        //     } else {
-        //         // swap_chain.swap_chain.recycle_surface(surface);
-        //         // recycle_sender.send(None).unwrap();
-        //     }
-        // }
-
-        // let mut texture = swap_chain.take_surface_as_texture();
-
-        // if texture.has_texture() {
-        //     let fbo_source =
-        //         qobject::fbo_from_texture(texture.object(), texture.target(), QSize::new(400, 400));
-        //     // Find the target fbo
-        //     let fbo_target = self.as_ref().framebuffer_object();
-
-        //     println!("render!");
-
-        //     // Blit it
-        //     unsafe { qobject::blit_framebuffer(fbo_target, fbo_source) };
-        // } else {
-        //     println!("no texture, continue");
-        // }
     }
 
     unsafe fn synchronize(mut self: Pin<&mut Self>, item: *mut qobject::QQuickFramebufferObject) {
@@ -210,6 +169,7 @@ impl qobject::QServoRenderer {
         if let Some(webview_ref) = webview_ptr.as_mut() {
             let mut webview = Pin::new_unchecked(webview_ref);
 
+            // Start the Servo worker thread if there isn't one
             if self.as_ref().sender.is_none() {
                 let qt_thread = webview.qt_thread();
                 let (sender, receiver) = mpsc::channel();
@@ -261,47 +221,6 @@ impl qobject::QServoRenderer {
 
         println!("sync end");
     }
-
-    // fn render(mut self: Pin<&mut Self>) {
-    // println!("going to recomposite");
-
-    // Ask for a frame to be rendered
-    // self.as_mut()
-    //     .rust_mut()
-    //     .servo
-    //     .as_mut()
-    //     .unwrap()
-    //     .recomposite();
-
-    // {
-    //     // Build a source fbo
-    //     let swap_chain =
-    //         QServoSwapChain::new(self.servo.as_ref().unwrap().window().webrender_surfman());
-    //     let texture = swap_chain.take_surface_as_texture();
-
-    //     if texture.has_texture() {
-    //         let fbo_source = qobject::fbo_from_texture(
-    //             texture.object(),
-    //             texture.target(),
-    //             QSize::new(400, 400),
-    //         );
-    //         // Find the target fbo
-    //         let fbo_target = self.framebuffer_object();
-
-    //         println!("render!");
-
-    //         // Blit it
-    //         unsafe { qobject::blit_framebuffer(fbo_target, fbo_source) };
-    //     } else {
-    //         println!("no texture, continue");
-    //     }
-    // }
-
-    // println!("going to present");
-
-    // Clear and onto the next frame
-    // self.as_mut().rust_mut().servo.as_mut().unwrap().present();
-    // }
 
     // unsafe fn synchronize(mut self: Pin<&mut Self>, item: *mut qobject::QQuickFramebufferObject) {
     //     println!("sync start");

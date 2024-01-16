@@ -5,7 +5,7 @@
 
 use std::{
     rc::Rc,
-    sync::mpsc::{Receiver, Sender},
+    sync::mpsc::{Receiver, SyncSender},
 };
 
 use cxx_qt::CxxQtThread;
@@ -18,25 +18,18 @@ use servo::{
     BrowserId, Servo,
 };
 use surfman::chains::SwapChainAPI;
-use surfman::{chains::SwapChain, Connection, Device, Surface};
+use surfman::{Connection, Surface};
 
 use crate::{
     browser::QServoBrowser, embedder::QServoEmbedder, events_loop::QServoEventsLoopWaker,
     webview::qobject::ServoWebView, windowheadless::QServoWindowHeadless,
 };
 
-pub(crate) struct SwapChainData {
-    pub(crate) connection: Connection,
-    pub(crate) swap_chain: SwapChain<Device>,
-}
-
 #[derive(Debug)]
 pub(crate) enum QServoMessage {
     Url(ServoUrl),
-    // GetSwapChain(Sender<SwapChain<Device>>),
-    GetSwapChain(Sender<SwapChainData>),
     Heartbeat,
-    BorrowSurface(Sender<Option<Surface>>, Receiver<Option<Surface>>),
+    BorrowSurface(SyncSender<Option<Surface>>, Receiver<Option<Surface>>),
     Quit,
 }
 
@@ -98,24 +91,6 @@ impl QServoThread {
                     } else {
                         self.browser
                             .push_event(EmbedderEvent::NewBrowser(url, self.browser_id));
-                    }
-                }
-                QServoMessage::GetSwapChain(sender) => {
-                    // TODO: cache locally
-                    let surfman = self.servo.window().webrender_surfman();
-                    let swap_chain = surfman
-                        .swap_chain()
-                        .expect("could not find swap chain")
-                        .clone();
-                    let connection = surfman.connection().clone();
-                    if sender
-                        .send(SwapChainData {
-                            connection,
-                            swap_chain,
-                        })
-                        .is_err()
-                    {
-                        println!("failed to send swapchain, too slow?");
                     }
                 }
                 QServoMessage::BorrowSurface(sender, receiver) => {
