@@ -27,3 +27,15 @@ fboFromTexture(unsigned int texture_id, unsigned int texture_target, QSize size)
     Q_ASSERT(fbo->isValid());
     return fbo;
 }
+
+::rust::isize
+qTouchEventPointCount(QTouchEvent const& event)
+{
+    return static_cast<::rust::isize>(event.pointCount());
+}
+
+QEventPoint const&
+qTouchEventPoint(QTouchEvent& event, ::rust::isize index)
+{
+    return (event.point(static_cast<qsizetype>(index)));
+}
