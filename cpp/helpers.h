@@ -10,7 +10,11 @@
 #include <memory>
 
 #include <QtCore/QSize>
+#include <QtGui/QEventPoint>
+#include <QtGui/QTouchEvent>
 #include <QtQuick/QQuickFramebufferObject>
+
+#include "rust/cxx.h"
 
 class QOpenGLFramebufferObject;
 
@@ -29,3 +33,15 @@ blitFramebuffer(QOpenGLFramebufferObject* target, QOpenGLFramebufferObject* sour
 
 QOpenGLFramebufferObject*
 fboFromTexture(unsigned int texture_id, unsigned int texture_target, QSize size);
+
+// Alias for QEventPoint::State
+//
+// TODO: if events were in cxx-qt-lib we wouldn't need this
+using QEventPointState = QEventPoint::State;
+
+// TODO: once qsizetype is in cxx-qt we could avoid this
+::rust::isize
+qTouchEventPointCount(QTouchEvent const& event);
+
+QEventPoint const&
+qTouchEventPoint(QTouchEvent& event, ::rust::isize index);

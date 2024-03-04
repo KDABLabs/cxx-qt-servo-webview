@@ -43,6 +43,10 @@ pub(crate) mod qobject {
         fn size(self: &ServoWebView) -> QSizeF;
 
         #[inherit]
+        #[cxx_name = "setAcceptTouchEvents"]
+        fn set_accept_touch_events(self: Pin<&mut ServoWebView>, enabled: bool);
+
+        #[inherit]
         fn update(self: Pin<&mut ServoWebView>);
     }
 
@@ -63,7 +67,42 @@ pub(crate) mod qobject {
         fn position(self: &QWheelEvent) -> QPointF;
     }
 
+    #[repr(u8)]
+    enum QEventPointState {
+        Unknown = 0x00,
+        Stationary = 0x04,
+        Pressed = 0x01,
+        Updated = 0x02,
+        Released = 0x08,
+    }
+
+    unsafe extern "C++" {
+        type QEventPointState;
+    }
+
+    unsafe extern "C++" {
+        type QEventPoint;
+
+        fn id(&self) -> i32;
+        fn position(&self) -> QPointF;
+        fn state(&self) -> QEventPointState;
+    }
+
+    unsafe extern "C++" {
+        type QTouchEvent;
+
+        #[cxx_name = "qTouchEventPointCount"]
+        fn qtouchevent_point_count(ptr: &QTouchEvent) -> isize;
+
+        #[cxx_name = "qTouchEventPoint"]
+        fn qtouchevent_point(ptr: Pin<&mut QTouchEvent>, i: isize) -> &QEventPoint;
+    }
+
     unsafe extern "RustQt" {
+        #[cxx_override]
+        #[cxx_name = "touchEvent"]
+        unsafe fn touch_event(self: Pin<&mut ServoWebView>, event: *mut QTouchEvent);
+
         #[cxx_override]
         #[cxx_name = "wheelEvent"]
         unsafe fn wheel_event(self: Pin<&mut ServoWebView>, event: *mut QWheelEvent);
@@ -76,9 +115,24 @@ pub(crate) mod qobject {
 use core::pin::Pin;
 use cxx_qt::CxxQtType;
 use cxx_qt_lib::{QString, QUrl};
-use servo::compositing::windowing::EmbedderEvent;
+use euclid::Point2D;
+use qobject::QEventPointState;
+use servo::{
+    compositing::windowing::EmbedderEvent,
+    script_traits::{TouchEventType, TouchId},
+};
 
 use crate::renderer::qobject::QServoRenderer;
+
+impl qobject::QTouchEvent {
+    fn point_count(&self) -> isize {
+        qobject::qtouchevent_point_count(self)
+    }
+
+    fn point(self: Pin<&mut Self>, index: isize) -> &qobject::QEventPoint {
+        qobject::qtouchevent_point(self, index)
+    }
+}
 
 #[derive(Default)]
 pub struct QServoWebViewRust {
@@ -92,6 +146,44 @@ pub struct QServoWebViewRust {
 impl qobject::ServoWebView {
     fn create_renderer(&self) -> *mut qobject::QQuickFramebufferObjectRenderer {
         QServoRenderer::new().into_raw() as *mut qobject::QQuickFramebufferObjectRenderer
+    }
+
+    fn touch_event(mut self: Pin<&mut Self>, event: *mut qobject::QTouchEvent) {
+        if let Some(event) = unsafe { event.as_mut() } {
+            let mut event = unsafe { Pin::new_unchecked(event) };
+            let points = event.as_ref().point_count();
+            if points == 0 {
+                // Empty points in Qt means that touch events have been cancelled
+                // emulate cancelling 4 ids as we have no id here
+                for id in 0..3 {
+                    self.as_mut().rust_mut().events.push(EmbedderEvent::Touch(
+                        TouchEventType::Cancel,
+                        TouchId(id),
+                        Point2D::new(0 as f32, 0 as f32),
+                    ));
+                }
+            } else {
+                for i in 0..points {
+                    let point = event.as_mut().point(i);
+                    let position = point.position();
+                    let position = Point2D::new(position.x() as f32, position.y() as f32);
+                    let phase = match point.state() {
+                        QEventPointState::Unknown | QEventPointState::Stationary => continue,
+                        QEventPointState::Pressed => TouchEventType::Down,
+                        QEventPointState::Updated => TouchEventType::Move,
+                        QEventPointState::Released => TouchEventType::Up,
+                        _others => continue,
+                    };
+                    self.as_mut().rust_mut().events.push(EmbedderEvent::Touch(
+                        phase,
+                        TouchId(point.id()),
+                        position,
+                    ));
+                }
+            }
+
+            self.as_mut().update();
+        }
     }
 
     fn wheel_event(mut self: Pin<&mut Self>, event: *mut qobject::QWheelEvent) {
@@ -139,6 +231,7 @@ impl qobject::ServoWebView {
 
 impl cxx_qt::Initialize for qobject::ServoWebView {
     fn initialize(mut self: Pin<&mut Self>) {
+        self.as_mut().set_accept_touch_events(true);
         self.as_mut().set_mirror_vertically(true);
 
         // When the URL changes trigger QQuickFramebufferObject::update
