@@ -65,7 +65,7 @@ use core::pin::Pin;
 use cxx_qt::{CxxQtType, Threading};
 use cxx_qt_lib::{QSize, QUrl};
 use euclid::Size2D;
-use servo::servo_url::ServoUrl;
+use servo::{compositing::windowing::EmbedderEvent, servo_url::ServoUrl};
 use std::sync::mpsc::{self, Sender};
 use surfman::{Context, Device};
 
@@ -123,8 +123,7 @@ impl qobject::QServoRenderer {
                         let target = device.surface_gl_texture_target() as u32;
 
                         // Build a source FBO from the texture
-                        let fbo_source =
-                            qobject::fbo_from_texture(object, target, size);
+                        let fbo_source = qobject::fbo_from_texture(object, target, size);
 
                         println!("render!");
 
@@ -207,6 +206,17 @@ impl qobject::QServoRenderer {
                         self.size.width() as i32,
                         self.size.height() as i32,
                     )))
+                    .unwrap();
+            }
+
+            // Process any converted events from Qt
+            let events: Vec<EmbedderEvent> = webview.rust_mut().events.drain(..).collect();
+            for event in events.into_iter() {
+                self.as_ref()
+                    .servo_sender
+                    .as_ref()
+                    .unwrap()
+                    .send(QServoMessage::RawEmbeddedEvent(event))
                     .unwrap();
             }
 

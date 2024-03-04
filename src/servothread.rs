@@ -11,11 +11,12 @@ use std::{
 use cxx_qt::CxxQtThread;
 use cxx_qt_lib::{QString, QUrl};
 use servo::{
-    compositing::windowing::{EmbedderEvent, WindowMethods},
+    compositing::windowing::{EmbedderEvent, MouseWindowEvent, WindowMethods},
     embedder_traits::EventLoopWaker,
     euclid::Size2D,
     servo_url::ServoUrl,
-    BrowserId, Servo, style_traits::DevicePixel,
+    style_traits::DevicePixel,
+    BrowserId, Servo, webrender_api::units::DevicePoint,
 };
 use surfman::chains::SwapChainAPI;
 use surfman::{Connection, Surface};
@@ -25,8 +26,9 @@ use crate::{
     webview::qobject::ServoWebView, windowheadless::QServoWindowHeadless,
 };
 
-#[derive(Debug)]
+// #[derive(Debug)]
 pub(crate) enum QServoMessage {
+    RawEmbeddedEvent(EmbedderEvent),
     Resize(Size2D<i32, DevicePixel>),
     Url(ServoUrl),
     Heartbeat,
@@ -84,6 +86,10 @@ impl QServoThread {
     pub(crate) fn run(&mut self) {
         while let Ok(msg) = self.receiver.recv() {
             match msg {
+                QServoMessage::RawEmbeddedEvent(event) => {
+                    self.browser
+                        .push_event(event);
+                }
                 QServoMessage::Resize(size) => {
                     let surfman = self.servo.window().webrender_surfman();
                     surfman
