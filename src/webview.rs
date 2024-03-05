@@ -234,9 +234,12 @@ impl qobject::ServoWebView {
                     MouseWindowEvent::MouseUp(button, position),
                 ));
 
-            // If the press position is the same as the release then assume a click
             if let Some(press_position) = self.as_mut().rust_mut().press_position.take() {
-                if press_position == event_position {
+                // If the press position is close to the release then assume a click
+                let diff = press_position - event_position;
+                let dist = (diff.x().powf(2.0) + diff.y().powf(2.0)).sqrt();
+                let dpi_factor = 1.0; // TODO: read DPI settings
+                if dist < 10.0 * dpi_factor {
                     self.as_mut()
                         .rust_mut()
                         .events
