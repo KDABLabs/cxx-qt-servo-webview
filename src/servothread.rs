@@ -31,7 +31,7 @@ pub(crate) enum QServoMessage {
     RawEmbeddedEvent(EmbedderEvent),
     Resize(Size2D<i32, DevicePixel>),
     Url(ServoUrl),
-    Heartbeat,
+    Heartbeat(SyncSender<()>),
     BorrowSurface(SyncSender<Option<Surface>>, Receiver<Option<Surface>>),
     Quit,
 }
@@ -124,7 +124,7 @@ impl QServoThread {
                         swap_chain.recycle_surface(surface);
                     }
                 }
-                QServoMessage::Heartbeat => {
+                QServoMessage::Heartbeat(sender) => {
                     // Browser process servo events
                     let servo_events = self.servo.get_events();
                     let response = self.browser.handle_servo_events(servo_events);
@@ -159,13 +159,24 @@ impl QServoThread {
                     if need_resize {
                         println!("repaint_synchronously");
                         self.servo.repaint_synchronously();
+                    } else {
+                        // If we aren't resizing then ensure the compositor is ready
+                        // otherwise after a resize we can have an empty frame
+                        self.servo.recomposite();
                     }
 
+
+                    // Instead we do this after recycle_surface as this avoids issues
+                    // with the surface becoming empty after resize
                     // Present if we resized or need to present
                     if need_present || need_resize {
                         println!("present!");
                         self.servo.present();
                     }
+
+                    // Indicate that we have completed the heartbeat
+                    sender.send(()).unwrap();
+
                     println!("heartbeat!");
                 }
                 QServoMessage::Quit => break,
