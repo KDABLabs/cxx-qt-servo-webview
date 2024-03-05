@@ -45,3 +45,5 @@ qTouchEventPointCount(QTouchEvent const& event);
 
 QEventPoint const&
 qTouchEventPoint(QTouchEvent& event, ::rust::isize index);
+
+using QMouseEventButton = Qt::MouseButton;

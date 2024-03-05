@@ -11,12 +11,12 @@ use std::{
 use cxx_qt::CxxQtThread;
 use cxx_qt_lib::{QString, QUrl};
 use servo::{
-    compositing::windowing::{EmbedderEvent, MouseWindowEvent, WindowMethods},
+    compositing::windowing::{EmbedderEvent, WindowMethods},
     embedder_traits::EventLoopWaker,
     euclid::Size2D,
     servo_url::ServoUrl,
     style_traits::DevicePixel,
-    BrowserId, Servo, webrender_api::units::DevicePoint,
+    BrowserId, Servo,
 };
 use surfman::chains::SwapChainAPI;
 use surfman::{Connection, Surface};
@@ -87,8 +87,7 @@ impl QServoThread {
         while let Ok(msg) = self.receiver.recv() {
             match msg {
                 QServoMessage::RawEmbeddedEvent(event) => {
-                    self.browser
-                        .push_event(event);
+                    self.browser.push_event(event);
                 }
                 QServoMessage::Resize(size) => {
                     let surfman = self.servo.window().webrender_surfman();
@@ -164,7 +163,6 @@ impl QServoThread {
                         // otherwise after a resize we can have an empty frame
                         self.servo.recomposite();
                     }
-
 
                     // Instead we do this after recycle_surface as this avoids issues
                     // with the surface becoming empty after resize
