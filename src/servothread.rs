@@ -144,7 +144,7 @@ impl QServoThread {
                         .unwrap();
 
                     // Present when required
-                    let need_present = response.present.unwrap_or_else(|| false);
+                    let need_present = response.present.unwrap_or(false);
 
                     // Servo process browser events
                     let browser_events = self.browser.get_events();
