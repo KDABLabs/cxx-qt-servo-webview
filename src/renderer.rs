@@ -221,12 +221,16 @@ impl qobject::QServoRenderer {
             }
 
             // Process any pending events
+            let (heartbeat_sender, heartbeat_receiver) = mpsc::sync_channel(0);
             self.as_ref()
                 .servo_sender
                 .as_ref()
                 .unwrap()
-                .send(QServoMessage::Heartbeat)
+                .send(QServoMessage::Heartbeat(heartbeat_sender))
                 .unwrap();
+            // Wait for response, otherwise if we enter render() while the
+            // heartbeat is running flickering can occur
+            heartbeat_receiver.recv().unwrap();
         }
 
         println!("sync end");
