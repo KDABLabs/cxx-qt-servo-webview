@@ -39,6 +39,12 @@ impl QServoBrowser {
 
         for (_browser_id, msg) in events {
             match msg {
+                EmbedderMsg::AllowNavigationRequest(pipeline_id, _url) => {
+                    if let Some(_browser_id) = self.browser_id {
+                        self.event_queue
+                            .push(EmbedderEvent::AllowNavigationResponse(pipeline_id, true));
+                    }
+                },
                 EmbedderMsg::BrowserCreated(new_browser_id) => {
                     if self.browser_id.is_some() {
                         panic!("Multiple top level browsing contexts not supported yet.");
