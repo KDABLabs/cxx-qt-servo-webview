@@ -43,6 +43,10 @@ pub(crate) mod qobject {
         fn size(self: &ServoWebView) -> QSizeF;
 
         #[inherit]
+        #[cxx_name = "setAcceptedMouseButtons"]
+        fn set_accepted_mouse_buttons(self: Pin<&mut ServoWebView>, buttons: QMouseEventButton);
+
+        #[inherit]
         #[cxx_name = "setAcceptTouchEvents"]
         fn set_accept_touch_events(self: Pin<&mut ServoWebView>, enabled: bool);
 
@@ -88,6 +92,26 @@ pub(crate) mod qobject {
         fn state(&self) -> QEventPointState;
     }
 
+    #[repr(i32)]
+    enum QMouseEventButton {
+        NoButton = 0,
+        AllButtons = 0x07ffffff,
+        LeftButton = 0x01,
+        RightButton = 0x02,
+        MiddleButton = 0x04,
+    }
+
+    unsafe extern "C++" {
+        type QMouseEventButton;
+    }
+
+    unsafe extern "C++" {
+        type QMouseEvent;
+
+        fn button(&self) -> QMouseEventButton;
+        fn position(&self) -> QPointF;
+    }
+
     unsafe extern "C++" {
         type QTouchEvent;
 
@@ -99,6 +123,18 @@ pub(crate) mod qobject {
     }
 
     unsafe extern "RustQt" {
+        #[cxx_override]
+        #[cxx_name = "mouseMoveEvent"]
+        unsafe fn mouse_move_event(self: Pin<&mut ServoWebView>, event: *mut QMouseEvent);
+
+        #[cxx_override]
+        #[cxx_name = "mousePressEvent"]
+        unsafe fn mouse_press_event(self: Pin<&mut ServoWebView>, event: *mut QMouseEvent);
+
+        #[cxx_override]
+        #[cxx_name = "mouseReleaseEvent"]
+        unsafe fn mouse_release_event(self: Pin<&mut ServoWebView>, event: *mut QMouseEvent);
+
         #[cxx_override]
         #[cxx_name = "touchEvent"]
         unsafe fn touch_event(self: Pin<&mut ServoWebView>, event: *mut QTouchEvent);
@@ -114,12 +150,12 @@ pub(crate) mod qobject {
 
 use core::pin::Pin;
 use cxx_qt::CxxQtType;
-use cxx_qt_lib::{QString, QUrl};
+use cxx_qt_lib::{QPointF, QString, QUrl};
 use euclid::Point2D;
-use qobject::QEventPointState;
+use qobject::{QEventPointState, QMouseEventButton};
 use servo::{
-    compositing::windowing::EmbedderEvent,
-    script_traits::{TouchEventType, TouchId},
+    compositing::windowing::{EmbedderEvent, MouseWindowEvent},
+    script_traits::{MouseButton, TouchEventType, TouchId},
 };
 
 use crate::renderer::qobject::QServoRenderer;
@@ -141,11 +177,80 @@ pub struct QServoWebViewRust {
     title: QString,
     url: QUrl,
     pub(crate) events: Vec<EmbedderEvent>,
+    press_position: Option<QPointF>,
 }
 
 impl qobject::ServoWebView {
     fn create_renderer(&self) -> *mut qobject::QQuickFramebufferObjectRenderer {
         QServoRenderer::new().into_raw() as *mut qobject::QQuickFramebufferObjectRenderer
+    }
+
+    fn mouse_move_event(mut self: Pin<&mut Self>, event: *mut qobject::QMouseEvent) {
+        if let Some(event) = unsafe { event.as_ref() } {
+            let event_position = event.position();
+            let position = Point2D::new(event_position.x() as f32, event_position.y() as f32);
+            self.as_mut()
+                .rust_mut()
+                .events
+                .push(EmbedderEvent::MouseWindowMoveEventClass(position));
+        }
+    }
+
+    fn mouse_press_event(mut self: Pin<&mut Self>, event: *mut qobject::QMouseEvent) {
+        if let Some(event) = unsafe { event.as_ref() } {
+            let event_position = event.position();
+            let position = Point2D::new(event_position.x() as f32, event_position.y() as f32);
+            let button = match event.button() {
+                QMouseEventButton::LeftButton => MouseButton::Left,
+                QMouseEventButton::RightButton => MouseButton::Right,
+                QMouseEventButton::MiddleButton => MouseButton::Middle,
+                _others => return,
+            };
+            self.as_mut()
+                .rust_mut()
+                .events
+                .push(EmbedderEvent::MouseWindowEventClass(
+                    MouseWindowEvent::MouseDown(button, position),
+                ));
+
+            // Store the event position so we can detect clicks
+            self.as_mut().rust_mut().press_position = Some(event_position);
+
+            self.as_mut().update();
+        }
+    }
+
+    fn mouse_release_event(mut self: Pin<&mut Self>, event: *mut qobject::QMouseEvent) {
+        if let Some(event) = unsafe { event.as_ref() } {
+            let event_position = event.position();
+            let position = Point2D::new(event_position.x() as f32, event_position.y() as f32);
+            let button = match event.button() {
+                QMouseEventButton::LeftButton => MouseButton::Left,
+                QMouseEventButton::RightButton => MouseButton::Right,
+                QMouseEventButton::MiddleButton => MouseButton::Middle,
+                _others => return,
+            };
+            self.as_mut()
+                .rust_mut()
+                .events
+                .push(EmbedderEvent::MouseWindowEventClass(
+                    MouseWindowEvent::MouseUp(button, position),
+                ));
+
+            // If the press position is the same as the release then assume a click
+            if let Some(press_position) = self.as_mut().rust_mut().press_position.take() {
+                if press_position == event_position {
+                    self.as_mut()
+                        .rust_mut()
+                        .events
+                        .push(EmbedderEvent::MouseWindowEventClass(
+                            MouseWindowEvent::Click(button, position),
+                        ));
+                }
+            }
+
+            self.as_mut().update();
+        }
     }
 
     fn touch_event(mut self: Pin<&mut Self>, event: *mut qobject::QTouchEvent) {
@@ -218,7 +323,7 @@ impl qobject::ServoWebView {
                 servo::compositing::windowing::EmbedderEvent::Scroll(
                     scroll_location,
                     euclid::Point2D::new(position.x() as i32, position.y() as i32),
-                    // TODO: consier scrolling phase
+                    // TODO: consider scrolling phase
                     // https://doc.qt.io/qt-6/qwheelevent.html#phase
                     servo::script_traits::TouchEventType::Move,
                 ),
@@ -231,6 +336,10 @@ impl qobject::ServoWebView {
 
 impl cxx_qt::Initialize for qobject::ServoWebView {
     fn initialize(mut self: Pin<&mut Self>) {
+        // TODO: we don't support QFlags so just enable everything for now
+        self.as_mut()
+            .set_accepted_mouse_buttons(QMouseEventButton::AllButtons);
+
         self.as_mut().set_accept_touch_events(true);
         self.as_mut().set_mirror_vertically(true);
 
