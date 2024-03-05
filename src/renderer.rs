@@ -119,8 +119,8 @@ impl qobject::QServoRenderer {
                 match device.create_surface_texture(context, surface) {
                     Ok(texture) => {
                         // Retrieve the texture info
-                        let object = device.surface_texture_object(&texture) as u32;
-                        let target = device.surface_gl_texture_target() as u32;
+                        let object = device.surface_texture_object(&texture);
+                        let target = device.surface_gl_texture_target();
 
                         // Build a source FBO from the texture
                         let fbo_source = qobject::fbo_from_texture(object, target, size);
@@ -203,8 +203,8 @@ impl qobject::QServoRenderer {
                     .as_ref()
                     .unwrap()
                     .send(QServoMessage::Resize(Size2D::new(
-                        self.size.width() as i32,
-                        self.size.height() as i32,
+                        self.size.width(),
+                        self.size.height(),
                     )))
                     .unwrap();
             }

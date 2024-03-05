@@ -62,9 +62,6 @@ pub(crate) mod qobject {
 
         type QWheelEvent;
 
-        #[cxx_name = "angleDelta"]
-        fn angle_delta(self: &QWheelEvent) -> QPoint;
-
         #[cxx_name = "pixelDelta"]
         fn pixel_delta(self: &QWheelEvent) -> QPoint;
 
