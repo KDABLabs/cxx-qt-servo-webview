@@ -20,19 +20,13 @@ glow = "0.12.2"
 raw-window-handle = "0.5"
 url = "2.3"
 
-libservo = { git = "https://github.com/servo/servo.git", rev = "117d59d393cf7926063e8723934fec97fd61d713" }
+libservo = { git = "https://github.com/servo/servo.git", rev = "3a3e76a935f92ce84c24496cfc46207cd46088f6" }
 servo-media = { git = "https://github.com/servo/media" }
-surfman = { version = "0.8", features = ["chains", "sm-angle", "sm-angle-default", "sm-x11", "sm-raw-window-handle"] }
+surfman = { version = "0.9", features = ["chains", "sm-angle", "sm-angle-default"] }
 
 [build-dependencies]
 cxx-qt-build = { version = "0.6", features = [ "link_qt_object_files" ] }
 cxx-qt-lib-headers = { version = "0.6" }
-
-# This is required because we want all dependencies that use WebRender to
-# use our vendored version.
-[patch."https://github.com/servo/webrender"]
-webrender = { path = "./servo/third_party/webrender/webrender" }
-webrender_api = { path = "./servo/third_party/webrender/webrender_api" }
 
 [patch.crates-io]
 # Use a need to follow `main` of CXX-Qt version
@@ -45,4 +39,4 @@ cxx-qt-lib-headers = { git = "https://github.com/kdab/cxx-qt.git", branch = "mai
 qt-build-utils = { git = "https://github.com/kdab/cxx-qt.git", branch = "main" }
 
 # We need a patched surfman to avoid OpenGL errors
-surfman = { git = "https://github.com/ahayzen-kdab/surfman.git", branch = "patched-opengl-assert" }
+surfman = { git = "https://github.com/ahayzen-kdab/surfman.git", branch = "patched-opengl-assert-0-9-1" }

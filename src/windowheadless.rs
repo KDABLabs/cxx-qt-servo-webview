@@ -8,14 +8,14 @@ use std::cell::Cell;
 use servo::{
     compositing::windowing::{AnimationState, EmbedderCoordinates, WindowMethods},
     euclid::{Point2D, Rect, Scale, Size2D},
+    rendering_context::RenderingContext,
     servo_geometry::DeviceIndependentPixel,
-    webrender_surfman::WebrenderSurfman,
 };
 use surfman::{Connection, SurfaceType};
 
 pub(crate) struct QServoWindowHeadless {
     animation_state: Cell<AnimationState>,
-    webrender_surfman: WebrenderSurfman,
+    rendering_context: RenderingContext,
 }
 
 impl QServoWindowHeadless {
@@ -26,11 +26,11 @@ impl QServoWindowHeadless {
             .expect("Failed to create adapter");
         let size = size.to_untyped().to_i32();
         let surface_type = SurfaceType::Generic { size };
-        let webrender_surfman = WebrenderSurfman::create(&connection, &adapter, surface_type)
+        let rendering_context = RenderingContext::create(&connection, &adapter, surface_type)
             .expect("Failed to create WR surfman");
 
         Self {
-            webrender_surfman,
+            rendering_context: rendering_context,
             animation_state: Cell::new(AnimationState::Idle),
         }
     }
@@ -39,7 +39,7 @@ impl QServoWindowHeadless {
 impl WindowMethods for QServoWindowHeadless {
     fn get_coordinates(&self) -> EmbedderCoordinates {
         let size = self
-            .webrender_surfman
+            .rendering_context
             .context_surface_info()
             .unwrap_or(None)
             .map(|info| Size2D::from_untyped(info.size))
@@ -59,19 +59,7 @@ impl WindowMethods for QServoWindowHeadless {
         self.animation_state.set(state);
     }
 
-    fn get_gl_context(&self) -> servo_media::player::context::GlContext {
-        servo_media::player::context::GlContext::Unknown
-    }
-
-    fn get_native_display(&self) -> servo_media::player::context::NativeDisplay {
-        servo_media::player::context::NativeDisplay::Unknown
-    }
-
-    fn get_gl_api(&self) -> servo_media::player::context::GlApi {
-        servo_media::player::context::GlApi::OpenGL3
-    }
-
-    fn webrender_surfman(&self) -> WebrenderSurfman {
-        self.webrender_surfman.clone()
+    fn rendering_context(&self) -> RenderingContext {
+        self.rendering_context.clone()
     }
 }
