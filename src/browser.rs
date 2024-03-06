@@ -3,7 +3,15 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-use servo::{compositing::windowing::EmbedderEvent, embedder_traits::EmbedderMsg, BrowserId};
+use servo::{
+    compositing::windowing::EmbedderEvent, embedder_traits::EmbedderMsg,
+    TopLevelBrowsingContextId as WebViewId,
+};
+use std::collections::HashMap;
+use std::vec::Drain;
+
+#[derive(Default)]
+pub struct WebView {}
 
 #[derive(Default)]
 pub(crate) struct QServoBrowserResponse {
@@ -16,13 +24,14 @@ pub(crate) struct QServoBrowserResponse {
 
 #[derive(Default)]
 pub(crate) struct QServoBrowser {
-    browser_id: Option<BrowserId>,
+    web_views: HashMap<WebViewId, WebView>,
     event_queue: Vec<EmbedderEvent>,
+    focused_webview_id: Option<WebViewId>,
 }
 
 impl QServoBrowser {
-    pub fn browser_id(&self) -> Option<BrowserId> {
-        self.browser_id
+    pub fn webview_id(&self) -> Option<WebViewId> {
+        self.focused_webview_id
     }
 
     pub fn get_events(&mut self) -> Vec<EmbedderEvent> {
@@ -34,14 +43,14 @@ impl QServoBrowser {
     /// TODO: does this move into the WebView?
     pub fn handle_servo_events(
         &mut self,
-        events: Vec<(Option<BrowserId>, EmbedderMsg)>,
+        events: Drain<'_, (Option<WebViewId>, EmbedderMsg)>,
     ) -> QServoBrowserResponse {
         let mut response = QServoBrowserResponse::default();
 
-        for (_browser_id, msg) in events {
+        for (webview_id, msg) in events {
             match msg {
                 EmbedderMsg::AllowNavigationRequest(pipeline_id, url) => {
-                    if let Some(_browser_id) = self.browser_id {
+                    if let Some(_webview_id) = webview_id {
                         self.event_queue
                             .push(EmbedderEvent::AllowNavigationResponse(pipeline_id, true));
 
@@ -49,15 +58,20 @@ impl QServoBrowser {
                         response.url = Some(url.into_url());
                     }
                 }
-                EmbedderMsg::BrowserCreated(new_browser_id) => {
-                    if self.browser_id.is_some() {
-                        panic!("Multiple top level browsing contexts not supported yet.");
-                    }
-
-                    self.browser_id = Some(new_browser_id);
-
+                EmbedderMsg::WebViewOpened(new_webview_id) => {
+                    self.web_views.insert(new_webview_id, WebView {});
                     self.event_queue
-                        .push(EmbedderEvent::SelectBrowser(new_browser_id));
+                        .push(EmbedderEvent::FocusWebView(new_webview_id));
+                }
+                EmbedderMsg::WebViewClosed(webview_id) => {
+                    self.web_views.remove(&webview_id);
+                    self.focused_webview_id = None;
+                }
+                EmbedderMsg::WebViewFocused(webview_id) => {
+                    self.focused_webview_id = Some(webview_id);
+                }
+                EmbedderMsg::WebViewBlurred => {
+                    self.focused_webview_id = None;
                 }
                 EmbedderMsg::ChangePageTitle(title) => {
                     response.title = title;

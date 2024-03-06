@@ -16,7 +16,7 @@ use servo::{
     euclid::Size2D,
     servo_url::ServoUrl,
     style_traits::DevicePixel,
-    BrowserId, Servo,
+    Servo, TopLevelBrowsingContextId,
 };
 use surfman::chains::SwapChainAPI;
 use surfman::{Connection, Surface};
@@ -36,9 +36,11 @@ pub(crate) enum QServoMessage {
     Quit,
 }
 
+unsafe impl Send for QServoMessage {}
+
 pub(crate) struct QServoThread {
     browser: QServoBrowser,
-    browser_id: BrowserId,
+    browser_id: TopLevelBrowsingContextId,
     servo: Servo<QServoWindowHeadless>,
     receiver: Receiver<QServoMessage>,
     qt_thread: CxxQtThread<ServoWebView>,
@@ -66,7 +68,12 @@ impl QServoThread {
         // application Servo is embedded in. Clients then create an event
         // loop to pump messages between the embedding application and
         // various browser components.
-        let servo_data = Servo::new(embedder, window.clone(), user_agent);
+        let servo_data = Servo::new(
+            embedder,
+            window.clone(),
+            user_agent,
+            servo::compositing::CompositeTarget::Window,
+        );
 
         // Enable logging and store servo instance
         servo_data.servo.setup_logging();
@@ -90,7 +97,7 @@ impl QServoThread {
                     self.browser.push_event(event);
                 }
                 QServoMessage::Resize(size) => {
-                    let surfman = self.servo.window().webrender_surfman();
+                    let surfman = self.servo.window().rendering_context();
                     surfman
                         .resize(size.to_untyped().to_i32())
                         .expect("Failed to resize");
@@ -98,16 +105,16 @@ impl QServoThread {
                 }
                 QServoMessage::Url(url) => {
                     // Open a new browser or load the url
-                    if let Some(browser_id) = self.browser.browser_id() {
+                    if let Some(webview_id) = self.browser.webview_id() {
                         self.browser
-                            .push_event(EmbedderEvent::LoadUrl(browser_id, url));
+                            .push_event(EmbedderEvent::LoadUrl(webview_id, url));
                     } else {
                         self.browser
-                            .push_event(EmbedderEvent::NewBrowser(url, self.browser_id));
+                            .push_event(EmbedderEvent::NewWebView(url, self.browser_id));
                     }
                 }
                 QServoMessage::BorrowSurface(sender, receiver) => {
-                    let surfman = self.servo.window().webrender_surfman();
+                    let surfman = self.servo.window().rendering_context();
                     let swap_chain = surfman.swap_chain().unwrap();
 
                     let surface = swap_chain.take_surface();
