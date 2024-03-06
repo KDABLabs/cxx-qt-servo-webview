@@ -552,9 +552,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.0.83"
+version = "1.0.89"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1174fb0b6ec23863f8b971027804a42614e347eafb0a95bf0b12cdae21fc4d0"
+checksum = "a0ba8f7aaa012f30d5b2861462f6708eccd49c3c39863fe083a308035f63d723"
 dependencies = [
  "jobserver",
  "libc",
@@ -1004,9 +1004,9 @@ dependencies = [
 
 [[package]]
 name = "cxx"
-version = "1.0.110"
+version = "1.0.112"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7129e341034ecb940c9072817cd9007974ea696844fc4dd582dc1653a7fbe2e8"
+checksum = "58ab30434ea0ff6aa640a08dda5284026a366d47565496fd40b6cbfbdd7e31a2"
 dependencies = [
  "cc",
  "cxxbridge-flags",
@@ -1016,9 +1016,9 @@ dependencies = [
 
 [[package]]
 name = "cxx-build"
-version = "1.0.110"
+version = "1.0.112"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2a24f3f5f8eed71936f21e570436f024f5c2e25628f7496aa7ccd03b90109d5"
+checksum = "b649d7dfae8268450d53d109388b337b9352c7cba1fc10db4a1bc23c3dc189fb"
 dependencies = [
  "cc",
  "codespan-reporting",
@@ -1031,9 +1031,9 @@ dependencies = [
 
 [[package]]
 name = "cxx-gen"
-version = "0.7.110"
+version = "0.7.112"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a3e0fc77e9f8d61724be90deb42a7e50ba3bf37c7c16dc91cdba821f69a5e0e9"
+checksum = "aeb9e5a1091e58561a9e50c4e725f3e4365e7272d9a9d9cf3ce4b8537a746113"
 dependencies = [
  "codespan-reporting",
  "proc-macro2",
@@ -1044,24 +1044,25 @@ dependencies = [
 [[package]]
 name = "cxx-qt"
 version = "0.6.0"
-source = "git+https://github.com/ahayzen-kdab/cxx-qt.git?branch=qobject-optional#cafbb403f29893d599a9f6dd166cee03a3632fe1"
+source = "git+https://github.com/kdab/cxx-qt.git?branch=main#dcc3d52963624094cbef92513c58937ec74cdbdd"
 dependencies = [
  "cxx",
+ "cxx-build",
  "cxx-qt-macro",
+ "qt-build-utils",
  "static_assertions",
 ]
 
 [[package]]
 name = "cxx-qt-build"
 version = "0.6.0"
-source = "git+https://github.com/ahayzen-kdab/cxx-qt.git?branch=qobject-optional#cafbb403f29893d599a9f6dd166cee03a3632fe1"
+source = "git+https://github.com/kdab/cxx-qt.git?branch=main#dcc3d52963624094cbef92513c58937ec74cdbdd"
 dependencies = [
  "cc",
  "codespan-reporting",
- "convert_case 0.6.0",
  "cxx-gen",
+ "cxx-qt",
  "cxx-qt-gen",
- "cxx-qt-lib-headers",
  "proc-macro2",
  "qt-build-utils",
  "quote",
@@ -1071,7 +1072,7 @@ dependencies = [
 [[package]]
 name = "cxx-qt-gen"
 version = "0.6.0"
-source = "git+https://github.com/ahayzen-kdab/cxx-qt.git?branch=qobject-optional#cafbb403f29893d599a9f6dd166cee03a3632fe1"
+source = "git+https://github.com/kdab/cxx-qt.git?branch=main#dcc3d52963624094cbef92513c58937ec74cdbdd"
 dependencies = [
  "clang-format",
  "convert_case 0.6.0",
@@ -1084,10 +1085,11 @@ dependencies = [
 [[package]]
 name = "cxx-qt-lib"
 version = "0.6.0"
-source = "git+https://github.com/ahayzen-kdab/cxx-qt.git?branch=qobject-optional#cafbb403f29893d599a9f6dd166cee03a3632fe1"
+source = "git+https://github.com/kdab/cxx-qt.git?branch=main#dcc3d52963624094cbef92513c58937ec74cdbdd"
 dependencies = [
  "cxx",
- "cxx-build",
+ "cxx-qt",
+ "cxx-qt-build",
  "cxx-qt-lib-headers",
  "qt-build-utils",
  "url",
@@ -1096,12 +1098,15 @@ dependencies = [
 [[package]]
 name = "cxx-qt-lib-headers"
 version = "0.6.0"
-source = "git+https://github.com/ahayzen-kdab/cxx-qt.git?branch=qobject-optional#cafbb403f29893d599a9f6dd166cee03a3632fe1"
+source = "git+https://github.com/kdab/cxx-qt.git?branch=main#dcc3d52963624094cbef92513c58937ec74cdbdd"
+dependencies = [
+ "cxx-qt-build",
+]
 
 [[package]]
 name = "cxx-qt-macro"
 version = "0.6.0"
-source = "git+https://github.com/ahayzen-kdab/cxx-qt.git?branch=qobject-optional#cafbb403f29893d599a9f6dd166cee03a3632fe1"
+source = "git+https://github.com/kdab/cxx-qt.git?branch=main#dcc3d52963624094cbef92513c58937ec74cdbdd"
 dependencies = [
  "cxx-qt-gen",
  "proc-macro2",
@@ -1110,15 +1115,15 @@ dependencies = [
 
 [[package]]
 name = "cxxbridge-flags"
-version = "1.0.110"
+version = "1.0.112"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06fdd177fc61050d63f67f5bd6351fac6ab5526694ea8e359cd9cd3b75857f44"
+checksum = "42281b20eba5218c539295c667c18e2f50211bb11902419194c6ed1ae808e547"
 
 [[package]]
 name = "cxxbridge-macro"
-version = "1.0.110"
+version = "1.0.112"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "587663dd5fb3d10932c8aecfe7c844db1bcf0aee93eeab08fac13dc1212c2e7f"
+checksum = "b45506e3c66512b0a65d291a6b452128b7b1dd9841e20d1e151addbd2c00ea50"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1133,6 +1138,7 @@ dependencies = [
  "cxx-qt",
  "cxx-qt-build",
  "cxx-qt-lib",
+ "cxx-qt-lib-headers",
  "euclid",
  "gleam",
  "glow",
@@ -3815,7 +3821,7 @@ dependencies = [
 [[package]]
 name = "qt-build-utils"
 version = "0.6.0"
-source = "git+https://github.com/ahayzen-kdab/cxx-qt.git?branch=qobject-optional#cafbb403f29893d599a9f6dd166cee03a3632fe1"
+source = "git+https://github.com/kdab/cxx-qt.git?branch=main#dcc3d52963624094cbef92513c58937ec74cdbdd"
 dependencies = [
  "cc",
  "thiserror",
