@@ -11,6 +11,7 @@ pub(crate) struct QServoBrowserResponse {
     pub(crate) present: Option<bool>,
     pub(crate) title: Option<String>,
     pub(crate) loading: Option<bool>,
+    pub(crate) url: Option<url::Url>,
 }
 
 #[derive(Default)]
@@ -39,12 +40,15 @@ impl QServoBrowser {
 
         for (_browser_id, msg) in events {
             match msg {
-                EmbedderMsg::AllowNavigationRequest(pipeline_id, _url) => {
+                EmbedderMsg::AllowNavigationRequest(pipeline_id, url) => {
                     if let Some(_browser_id) = self.browser_id {
                         self.event_queue
                             .push(EmbedderEvent::AllowNavigationResponse(pipeline_id, true));
+
+                        // There is a new URL
+                        response.url = Some(url.into_url());
                     }
-                },
+                }
                 EmbedderMsg::BrowserCreated(new_browser_id) => {
                     if self.browser_id.is_some() {
                         panic!("Multiple top level browsing contexts not supported yet.");
@@ -63,10 +67,10 @@ impl QServoBrowser {
                 }
                 EmbedderMsg::LoadStart => {
                     response.loading = Some(true);
-                },
+                }
                 EmbedderMsg::LoadComplete => {
                     response.loading = Some(false);
-                },
+                }
                 EmbedderMsg::ReadyToPresent => {
                     response.present = Some(true);
                 }
