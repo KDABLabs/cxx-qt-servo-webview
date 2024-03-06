@@ -348,6 +348,8 @@ impl qobject::ServoWebView {
                 .rust_mut()
                 .events
                 .push(EmbedderEvent::MouseWindowMoveEventClass(position));
+
+            self.as_mut().update();
         }
     }
 
