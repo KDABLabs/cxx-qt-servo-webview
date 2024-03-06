@@ -25,6 +25,24 @@ pub(crate) mod qobject {
         fn set_mirror_vertically(self: Pin<&mut ServoWebView>, enable: bool);
     }
 
+    #[namespace = "Qt"]
+    #[repr(i32)]
+    enum FocusReason {
+        MouseFocusReason,
+        TabFocusReason,
+        BacktabFocusReason,
+        ActiveWindowFocusReason,
+        PopupFocusReason,
+        ShortcutFocusReason,
+        MenuBarFocusReason,
+        OtherFocusReason,
+    }
+
+    #[namespace = "Qt"]
+    unsafe extern "C++" {
+        type FocusReason;
+    }
+
     unsafe extern "RustQt" {
         #[qobject]
         #[base = "QQuickFramebufferObject"]
@@ -38,6 +56,10 @@ pub(crate) mod qobject {
         #[cxx_override]
         #[cxx_name = "createRenderer"]
         fn create_renderer(self: &ServoWebView) -> *mut QQuickFramebufferObjectRenderer;
+
+        #[inherit]
+        #[cxx_name = "forceActiveFocus"]
+        fn force_active_focus(self: Pin<&mut ServoWebView>, reason: FocusReason);
 
         #[inherit]
         fn size(self: &ServoWebView) -> QSizeF;
@@ -168,7 +190,7 @@ use core::pin::Pin;
 use cxx_qt::CxxQtType;
 use cxx_qt_lib::{QPointF, QString, QUrl};
 use euclid::Point2D;
-use qobject::{QEventPointState, QMouseEventButton};
+use qobject::{FocusReason, QEventPointState, QMouseEventButton};
 use servo::{
     compositing::windowing::{EmbedderEvent, MouseWindowEvent},
     keyboard_types::{Code, Key, KeyboardEvent, Location, Modifiers},
@@ -373,6 +395,10 @@ impl qobject::ServoWebView {
             // Store the event position so we can detect clicks
             self.as_mut().rust_mut().press_position = Some(event_position);
 
+            // Ensure we have focus so that we receive key events
+            self.as_mut()
+                .force_active_focus(FocusReason::MouseFocusReason);
+
             self.as_mut().update();
         }
     }
@@ -408,6 +434,10 @@ impl qobject::ServoWebView {
                         ));
                 }
             }
+
+            // Ensure we have focus so that we receive key events
+            self.as_mut()
+                .force_active_focus(FocusReason::MouseFocusReason);
 
             self.as_mut().update();
         }
@@ -446,6 +476,10 @@ impl qobject::ServoWebView {
                     ));
                 }
             }
+
+            // Ensure we have focus so that we receive key events
+            self.as_mut()
+                .force_active_focus(FocusReason::MouseFocusReason);
 
             self.as_mut().update();
         }
