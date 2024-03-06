@@ -193,7 +193,7 @@ use euclid::Point2D;
 use qobject::{FocusReason, QEventPointState, QMouseEventButton};
 use servo::{
     compositing::windowing::{EmbedderEvent, MouseWindowEvent},
-    keyboard_types::{Code, Key, KeyboardEvent, Location, Modifiers},
+    keyboard_types::{Code, Key, KeyState, KeyboardEvent, Location, Modifiers},
     script_traits::{MouseButton, TouchEventType, TouchId},
 };
 use std::str::FromStr;
@@ -318,10 +318,10 @@ impl qobject::ServoWebView {
         QServoRenderer::new().into_raw() as *mut qobject::QQuickFramebufferObjectRenderer
     }
 
-    fn key_press_event(mut self: Pin<&mut Self>, event: *mut qobject::QKeyEvent) {
+    fn key_event(mut self: Pin<&mut Self>, event: *mut qobject::QKeyEvent, state: KeyState) {
         if let Some(event) = unsafe { event.as_ref() } {
             let keyboard_event = KeyboardEvent {
-                state: servo::keyboard_types::KeyState::Down,
+                state,
                 key: Key::from_str(&String::from(&event.text()))
                     .unwrap_or_else(|_| Key::Unidentified),
                 code: get_servo_code_from_scancode(event.key()),
@@ -340,26 +340,12 @@ impl qobject::ServoWebView {
         }
     }
 
-    fn key_release_event(mut self: Pin<&mut Self>, event: *mut qobject::QKeyEvent) {
-        if let Some(event) = unsafe { event.as_ref() } {
-            let keyboard_event = KeyboardEvent {
-                state: servo::keyboard_types::KeyState::Up,
-                key: Key::from_str(&String::from(&event.text()))
-                    .unwrap_or_else(|_| Key::Unidentified),
-                code: get_servo_code_from_scancode(event.key()),
-                repeat: event.is_auto_repeat(),
-                // TODO: handle these correctly
-                location: Location::Standard,
-                modifiers: Modifiers::empty(),
-                is_composing: false,
-            };
-            self.as_mut()
-                .rust_mut()
-                .events
-                .push(EmbedderEvent::Keyboard(keyboard_event));
+    fn key_press_event(self: Pin<&mut Self>, event: *mut qobject::QKeyEvent) {
+        self.key_event(event, KeyState::Down);
+    }
 
-            self.as_mut().update();
-        }
+    fn key_release_event(self: Pin<&mut Self>, event: *mut qobject::QKeyEvent) {
+        self.key_event(event, KeyState::Up);
     }
 
     fn mouse_move_event(mut self: Pin<&mut Self>, event: *mut qobject::QMouseEvent) {
