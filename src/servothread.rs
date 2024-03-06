@@ -140,6 +140,9 @@ impl QServoThread {
                             if let Some(favicon_url) = response.favicon_url {
                                 webview.as_mut().set_favicon_url(QUrl::from(&favicon_url));
                             }
+                            if let Some(url) = response.url {
+                                webview.as_mut().set_url(QUrl::from(&url));
+                            }
                         })
                         .unwrap();
 

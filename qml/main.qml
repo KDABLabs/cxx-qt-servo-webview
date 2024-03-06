@@ -57,6 +57,12 @@ Window {
                 id: textInputUrl
                 Layout.fillWidth: true
                 text: webView.url
+
+                Binding {
+                    target: textInputUrl
+                    property: "text"
+                    value: webView.url
+                }
             }
 
             Button {
