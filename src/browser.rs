@@ -70,6 +70,8 @@ impl QServoBrowser {
                 EmbedderMsg::ReadyToPresent => {
                     response.present = Some(true);
                 }
+                // TODO: this is where page up/down or shortcuts are handled
+                // EmbedderMsg::Keyboard(key_event) => {}
                 _others => {
                     println!("handle_servo_events: {:?}", _others);
                 }

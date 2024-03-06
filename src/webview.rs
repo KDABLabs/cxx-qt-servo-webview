@@ -89,6 +89,17 @@ pub(crate) mod qobject {
         fn state(&self) -> QEventPointState;
     }
 
+    unsafe extern "C++" {
+        type QKeyEvent;
+
+        #[cxx_name = "isAutoRepeat"]
+        fn is_auto_repeat(&self) -> bool;
+
+        fn key(&self) -> i32;
+
+        fn text(&self) -> QString;
+    }
+
     #[repr(i32)]
     enum QMouseEventButton {
         NoButton = 0,
@@ -120,6 +131,14 @@ pub(crate) mod qobject {
     }
 
     unsafe extern "RustQt" {
+        #[cxx_name = "keyPressEvent"]
+        #[cxx_override]
+        unsafe fn key_press_event(self: Pin<&mut ServoWebView>, event: *mut QKeyEvent);
+
+        #[cxx_name = "keyReleaseEvent"]
+        #[cxx_override]
+        unsafe fn key_release_event(self: Pin<&mut ServoWebView>, event: *mut QKeyEvent);
+
         #[cxx_override]
         #[cxx_name = "mouseMoveEvent"]
         unsafe fn mouse_move_event(self: Pin<&mut ServoWebView>, event: *mut QMouseEvent);
@@ -152,8 +171,10 @@ use euclid::Point2D;
 use qobject::{QEventPointState, QMouseEventButton};
 use servo::{
     compositing::windowing::{EmbedderEvent, MouseWindowEvent},
+    keyboard_types::{Code, Key, KeyboardEvent, Location, Modifiers},
     script_traits::{MouseButton, TouchEventType, TouchId},
 };
+use std::str::FromStr;
 
 use crate::renderer::qobject::QServoRenderer;
 
@@ -164,6 +185,99 @@ impl qobject::QTouchEvent {
 
     fn point(self: Pin<&mut Self>, index: isize) -> &qobject::QEventPoint {
         qobject::qtouchevent_point(self, index)
+    }
+}
+
+fn get_servo_code_from_scancode(code: i32) -> Code {
+    // TODO: Map more codes
+    use servo::keyboard_types::Code::*;
+    match code {
+        0x01000000 => Escape,
+        0x01000001 => Tab,
+        // 0x01000002
+        0x01000003 => Backspace,
+        0x01000004 => Enter,
+        0x01000005 => NumpadEnter,
+        0x01000006 => Insert,
+        0x01000007 => Delete,
+        // ...
+        0x01000010 => Home,
+        0x01000011 => End,
+        0x01000012 => ArrowLeft,
+        0x01000013 => ArrowUp,
+        0x01000014 => ArrowRight,
+        0x01000015 => ArrowDown,
+        0x01000016 => PageUp,
+        0x01000017 => PageDown,
+        // Shift
+        0x01000020 => ShiftLeft,
+        // ...
+        0x01000030 => F1,
+        0x01000031 => F2,
+        0x01000032 => F3,
+        0x01000033 => F4,
+        0x01000034 => F5,
+        0x01000035 => F6,
+        0x01000036 => F7,
+        0x01000037 => F8,
+        0x01000038 => F9,
+        0x01000039 => F10,
+        0x0100003a => F11,
+        0x0100003b => F12,
+        // ...
+        0x20 => Space,
+        // ...
+        0x2c => Comma,
+        // 0x2d
+        0x2e => Period,
+        0x2f => Slash,
+        0x30 => Digit0,
+        0x31 => Digit1,
+        0x32 => Digit2,
+        0x33 => Digit3,
+        0x34 => Digit4,
+        0x35 => Digit5,
+        0x36 => Digit6,
+        0x37 => Digit7,
+        0x38 => Digit8,
+        0x39 => Digit9,
+        // 0x3a
+        0x3b => Semicolon,
+        // ...
+        0x41 => KeyA,
+        0x42 => KeyB,
+        0x43 => KeyC,
+        0x44 => KeyD,
+        0x45 => KeyE,
+        0x46 => KeyF,
+        0x47 => KeyG,
+        0x48 => KeyH,
+        0x49 => KeyI,
+        0x4a => KeyJ,
+        0x4b => KeyK,
+        0x4c => KeyL,
+        0x4d => KeyM,
+        0x4e => KeyN,
+        0x4f => KeyO,
+        0x50 => KeyP,
+        0x51 => KeyQ,
+        0x52 => KeyR,
+        0x53 => KeyS,
+        0x54 => KeyT,
+        0x55 => KeyU,
+        0x56 => KeyV,
+        0x57 => KeyW,
+        0x58 => KeyX,
+        0x59 => KeyY,
+        0x5a => KeyZ,
+        0x5b => BracketLeft,
+        0x5c => Backslash,
+        0x5d => BracketRight,
+        // ...
+        // QuoteLeft
+        0x60 => Quote,
+        // ...
+        _ => Unidentified,
     }
 }
 
@@ -180,6 +294,50 @@ pub struct QServoWebViewRust {
 impl qobject::ServoWebView {
     fn create_renderer(&self) -> *mut qobject::QQuickFramebufferObjectRenderer {
         QServoRenderer::new().into_raw() as *mut qobject::QQuickFramebufferObjectRenderer
+    }
+
+    fn key_press_event(mut self: Pin<&mut Self>, event: *mut qobject::QKeyEvent) {
+        if let Some(event) = unsafe { event.as_ref() } {
+            let keyboard_event = KeyboardEvent {
+                state: servo::keyboard_types::KeyState::Down,
+                key: Key::from_str(&String::from(&event.text()))
+                    .unwrap_or_else(|_| Key::Unidentified),
+                code: get_servo_code_from_scancode(event.key()),
+                repeat: event.is_auto_repeat(),
+                // TODO: handle these correctly
+                location: Location::Standard,
+                modifiers: Modifiers::empty(),
+                is_composing: false,
+            };
+            self.as_mut()
+                .rust_mut()
+                .events
+                .push(EmbedderEvent::Keyboard(keyboard_event));
+
+            self.as_mut().update();
+        }
+    }
+
+    fn key_release_event(mut self: Pin<&mut Self>, event: *mut qobject::QKeyEvent) {
+        if let Some(event) = unsafe { event.as_ref() } {
+            let keyboard_event = KeyboardEvent {
+                state: servo::keyboard_types::KeyState::Up,
+                key: Key::from_str(&String::from(&event.text()))
+                    .unwrap_or_else(|_| Key::Unidentified),
+                code: get_servo_code_from_scancode(event.key()),
+                repeat: event.is_auto_repeat(),
+                // TODO: handle these correctly
+                location: Location::Standard,
+                modifiers: Modifiers::empty(),
+                is_composing: false,
+            };
+            self.as_mut()
+                .rust_mut()
+                .events
+                .push(EmbedderEvent::Keyboard(keyboard_event));
+
+            self.as_mut().update();
+        }
     }
 
     fn mouse_move_event(mut self: Pin<&mut Self>, event: *mut qobject::QMouseEvent) {
