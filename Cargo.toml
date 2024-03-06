@@ -26,6 +26,7 @@ surfman = { version = "0.8", features = ["chains", "sm-angle", "sm-angle-default
 
 [build-dependencies]
 cxx-qt-build = { version = "0.6", features = [ "link_qt_object_files" ] }
+cxx-qt-lib-headers = { version = "0.6" }
 
 # This is required because we want all dependencies that use WebRender to
 # use our vendored version.
@@ -33,13 +34,15 @@ cxx-qt-build = { version = "0.6", features = [ "link_qt_object_files" ] }
 webrender = { path = "./servo/third_party/webrender/webrender" }
 webrender_api = { path = "./servo/third_party/webrender/webrender_api" }
 
-# Use a custom CXX-Qt version
 [patch.crates-io]
-cxx-qt = { git = "https://github.com/ahayzen-kdab/cxx-qt.git", branch = "qobject-optional" }
-cxx-qt-build = { git = "https://github.com/ahayzen-kdab/cxx-qt.git", branch = "qobject-optional" }
-cxx-qt-gen = { git = "https://github.com/ahayzen-kdab/cxx-qt.git", branch = "qobject-optional" }
-cxx-qt-macro = { git = "https://github.com/ahayzen-kdab/cxx-qt.git", branch = "qobject-optional" }
-cxx-qt-lib = { git = "https://github.com/ahayzen-kdab/cxx-qt.git", branch = "qobject-optional" }
-cxx-qt-lib-headers = { git = "https://github.com/ahayzen-kdab/cxx-qt.git", branch = "qobject-optional" }
-qt-build-utils = { git = "https://github.com/ahayzen-kdab/cxx-qt.git", branch = "qobject-optional" }
+# Use a need to follow `main` of CXX-Qt version
+cxx-qt = { git = "https://github.com/kdab/cxx-qt.git", branch = "main" }
+cxx-qt-build = { git = "https://github.com/kdab/cxx-qt.git", branch = "main" }
+cxx-qt-gen = { git = "https://github.com/kdab/cxx-qt.git", branch = "main" }
+cxx-qt-macro = { git = "https://github.com/kdab/cxx-qt.git", branch = "main" }
+cxx-qt-lib = { git = "https://github.com/kdab/cxx-qt.git", branch = "main" }
+cxx-qt-lib-headers = { git = "https://github.com/kdab/cxx-qt.git", branch = "main" }
+qt-build-utils = { git = "https://github.com/kdab/cxx-qt.git", branch = "main" }
+
+# We need a patched surfman to avoid OpenGL errors
 surfman = { git = "https://github.com/ahayzen-kdab/surfman.git", branch = "patched-opengl-assert" }

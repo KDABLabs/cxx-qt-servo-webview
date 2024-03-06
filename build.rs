@@ -22,5 +22,6 @@ fn main() {
         })
         .file("src/renderer.rs")
         .qobject_header("cpp/helpers.h")
+        .with_opts(cxx_qt_lib_headers::build_opts())
         .build();
 }
