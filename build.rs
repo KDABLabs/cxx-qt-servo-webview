@@ -13,10 +13,23 @@ fn main() {
         .qml_module(QmlModule {
             uri: "com.kdab.servo",
             rust_files: &["src/webview.rs"],
-            qml_files: &["qml/main.qml", "qml/ServoToolbar.qml"],
+            qml_files: &[
+                "qml/main.qml",
+                "qml/KdabPanel.qml",
+                "qml/InfoPanel.qml",
+                "qml/ServoToolbar.qml",
+                "qml/WarningPanel.qml",
+            ],
             qrc_files: &[
                 "images/arrow-back.png",
                 "images/arrow-forward.png",
+                "images/favicon-kdab.png",
+                "images/favicon-qt.png",
+                "images/favicon-rust.png",
+                "images/favicon-servo.png",
+                "images/kdab-logo.png",
+                "images/rust-logo-white.png",
+                "images/servo-color-negative-no-container.svg",
                 "images/search.png",
             ],
             ..Default::default()

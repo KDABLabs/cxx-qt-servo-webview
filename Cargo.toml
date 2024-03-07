@@ -13,6 +13,7 @@ license = "MPL-2.0"
 cxx = "1.0.95"
 cxx-qt = "0.6"
 cxx-qt-lib = { version = "0.6", features = ["url"] }
+file-serve = "0.3.1"
 
 euclid = "0.22"
 gleam = "0.15"

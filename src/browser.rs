@@ -60,6 +60,11 @@ impl QServoBrowser {
                 }
                 EmbedderMsg::AllowNavigationRequest(pipeline_id, url) => {
                     if let Some(_webview_id) = webview_id {
+                        // Clear the cache in an attempt to keep memory usage low
+                        if navigation_allowed {
+                            self.event_queue.push(EmbedderEvent::ClearCache);
+                        }
+
                         self.event_queue
                             .push(EmbedderEvent::AllowNavigationResponse(
                                 pipeline_id,

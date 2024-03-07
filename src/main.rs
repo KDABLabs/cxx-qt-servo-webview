@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 use cxx_qt_lib::{QGuiApplication, QQmlApplicationEngine, QUrl};
+use std::{env, path::Path, thread, time::Duration};
 
 mod browser;
 mod embedder;
@@ -14,8 +15,21 @@ mod webview;
 mod windowheadless;
 
 fn main() {
+    // Start serving files in the background
+    thread::spawn(|| {
+        let path = Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap()).join("static_files");
+        file_serve::ServerBuilder::new(path)
+            .hostname("0.0.0.0")
+            .port(8001)
+            .serve()
+            .unwrap();
+    });
+
+    // Ensure that file serve is ready
+    thread::sleep(Duration::from_secs(1));
+
     // We need the OpenGL backend for QQuickFramebufferObject
-    std::env::set_var("QSG_RHI_BACKEND", "opengl");
+    env::set_var("QSG_RHI_BACKEND", "opengl");
 
     let mut app = QGuiApplication::new();
     let mut engine = QQmlApplicationEngine::new();

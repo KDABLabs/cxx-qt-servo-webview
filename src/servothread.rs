@@ -55,10 +55,20 @@ impl QServoThread {
         qt_thread: CxxQtThread<ServoWebView>,
         connection: Connection,
     ) -> Self {
+        // use servo::config::{opts, set_pref};
+        // set_pref!(session_history.max_length, 0);
+        // let mut options = opts::default_opts();
+        // options.mem_profiler_period = Some(5.0);
+        // options.background_hang_monitor = true;
+        // opts::set_options(options);
+
         let event_loop_waker = QServoEventsLoopWaker::new(qt_thread.clone());
         let embedder = Box::new(QServoEmbedder::new(event_loop_waker.clone_box()));
 
-        let window = Rc::new(QServoWindowHeadless::new(Size2D::new(400, 400), connection));
+        let window = Rc::new(QServoWindowHeadless::new(
+            Size2D::new(1280, 734),
+            connection,
+        ));
         let user_agent = None;
         // The in-process interface to Servo.
         //
@@ -110,6 +120,9 @@ impl QServoThread {
                         )
                     };
 
+                    // Clear the cache in an attempt to keep memory usage low
+                    self.browser.push_event(EmbedderEvent::ClearCache);
+
                     self.browser
                         .push_event(EmbedderEvent::Navigation(self.browser_id, direction));
                 }
@@ -133,6 +146,9 @@ impl QServoThread {
 
                     // Open a new browser or load the url
                     if let Some(webview_id) = self.browser.webview_id() {
+                        // Clear the cache in an attempt to keep memory usage low
+                        self.browser.push_event(EmbedderEvent::ClearCache);
+
                         self.browser
                             .push_event(EmbedderEvent::LoadUrl(webview_id, url));
                     } else {

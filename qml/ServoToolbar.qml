@@ -14,6 +14,9 @@ ColumnLayout {
 
     signal goBack()
     signal goForward()
+    signal infoPanelRequest()
+    signal kdabPanelRequest()
+    signal warningPanelRequest()
     signal urlRequest(url requestedUrl)
 
     property alias canGoBack: backButton.enabled
@@ -93,33 +96,59 @@ ColumnLayout {
                     }
                 }
 
-                TextField {
-                    id: textInputUrl
+                Label {
+                    elide: Text.ElideRight
                     font.pixelSize: 24
                     Layout.alignment: Qt.AlignVCenter
-                    Layout.fillHeight: true
                     Layout.fillWidth: true
-                    text: root.webViewUrl
-                    placeholderText: qsTr("Url...")
-                    background: Item {}
+                    // Fake any local urls to an equivalent real url
+                    text: root.webViewUrl.toString().replace("http://0.0.0.0:8001/", "https://")
 
-                    onAccepted: {
-                        if (goButton.enabled) {
-                            goButton.clicked();
-                        }
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: root.warningPanelRequest()
                     }
                 }
             }
         }
 
         ServoButton {
-            id: goButton
-            enabled: textInputUrl.text.length > 0
-            icon.source: "../images/search.png"
-            icon.height: 48
-            icon.width: 48
+            icon.source: "../images/favicon-servo.png"
 
-            onClicked: root.urlRequest(textInputUrl.text)
+            onClicked: root.urlRequest("http://0.0.0.0:8001/servo.org/")
+        }
+
+        ServoSeparator {}
+
+        ServoButton {
+            icon.source: "../images/favicon-rust.png"
+
+            onClicked: root.urlRequest("http://0.0.0.0:8001/www.rust-lang.org/")
+        }
+
+        ServoSeparator {}
+
+        ServoButton {
+            icon.source: "../images/favicon-kdab.png"
+
+            onClicked: root.infoPanelRequest()
+            onPressed: kdabTimer.restart()
+            onReleased: kdabTimer.stop()
+
+            Timer {
+                id: kdabTimer
+                interval: 5000
+
+                onTriggered: root.kdabPanelRequest()
+            }
+        }
+
+        ServoSeparator {}
+
+        ServoButton {
+            icon.source: "../images/favicon-qt.png"
+
+            onClicked: root.infoPanelRequest()
         }
     }
 

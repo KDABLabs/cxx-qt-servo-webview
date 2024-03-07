@@ -14,44 +14,79 @@ Window {
     id: root
     color: "white"
     title: webView.title
+    visibility: Window.FullScreen
     visible: true
     height: 800
     width: 1280
 
-    ColumnLayout {
-        anchors.fill: parent
-        spacing: 0
+    // Ensure we have the right size for the EW demo to avoid glitches
+    Item {
+        height: 800
+        width: 1280
 
-        ServoToolbar {
-            id: toolbar
-            canGoBack: webView.canGoBack
-            canGoForward: webView.canGoForward
-            faviconUrl: webView.faviconUrl
-            webViewUrl: webView.url
-            Layout.fillWidth: true
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: 0
 
-            onGoBack: webView.goBack()
-            onGoForward: webView.goForward()
-            onUrlRequest: (requestedUrl) => webView.url = requestedUrl
+            ServoToolbar {
+                id: toolbar
+                canGoBack: webView.canGoBack
+                canGoForward: webView.canGoForward
+                faviconUrl: webView.faviconUrl
+                webViewUrl: webView.url
+                Layout.fillWidth: true
+
+                onGoBack: webView.goBack()
+                onGoForward: webView.goForward()
+                onInfoPanelRequest: infoPanel.show()
+                onKdabPanelRequest: kdabPanel.show()
+                onWarningPanelRequest: warningPanel.show()
+                onUrlRequest: (requestedUrl) => webView.url = requestedUrl
+            }
+
+            // Servo webview
+            ServoWebView {
+                id: webView
+                Layout.fillHeight: true
+                Layout.fillWidth: true
+                navigationAllowed: false
+                url: "http://0.0.0.0:8001/servo.org/"
+
+                onBlockedNavigationRequest: (blockedUrl) => {
+                    // Allow for navigation to any offline sites
+                    if (blockedUrl.toString().startsWith("http://0.0.0.0:8001/")) {
+                        webView.url = blockedUrl;
+                    } else {
+                        warningPanel.show();
+                    }
+                }
+            }
         }
 
-        // Servo webview
-        ServoWebView {
-            id: webView
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-            url: "https://servo.org/"
+        // Progress bar at the bottom overlaying the Servo WebView
+        // so that we don't have a flicker when it's hidden as this doesn't cause a resize
+        ProgressBar {
+            anchors.bottom: parent.bottom
+            anchors.left: parent.left
+            anchors.right: parent.right
+            height: 10
+            indeterminate: true
+            visible: webView.loading
         }
-    }
 
-    // Progress bar at the bottom overlaying the Servo WebView
-    // so that we don't have a flicker when it's hidden as this doesn't cause a resize
-    ProgressBar {
-        anchors.bottom: parent.bottom
-        anchors.left: parent.left
-        anchors.right: parent.right
-        height: 10
-        indeterminate: true
-        visible: webView.loading
+        InfoPanel {
+            id: infoPanel
+            anchors.fill: parent
+        }
+
+        WarningPanel {
+            id: warningPanel
+            anchors.fill: parent
+        }
+
+        KdabPanel {
+            id: kdabPanel
+            anchors.fill: parent
+        }
     }
 }
