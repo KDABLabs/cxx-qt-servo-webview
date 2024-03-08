@@ -181,10 +181,6 @@ impl QServoThread {
                     if need_resize {
                         println!("repaint_synchronously");
                         self.servo.repaint_synchronously();
-                    } else {
-                        // If we aren't resizing then ensure the compositor is ready
-                        // otherwise after a resize we can have an empty frame
-                        self.servo.recomposite();
                     }
 
                     // Instead we do this after recycle_surface as this avoids issues
@@ -193,6 +189,14 @@ impl QServoThread {
                     if need_present || need_resize {
                         println!("present!");
                         self.servo.present();
+                    }
+
+                    // If we are resizing then recomposite after the present
+                    // as we need to ensure that the front and back buffer
+                    // have both been recomposite / repaint_synchronously
+                    if need_resize {
+                        println!("recomposite");
+                        self.servo.recomposite();
                     }
 
                     // Indicate that we have completed the heartbeat
