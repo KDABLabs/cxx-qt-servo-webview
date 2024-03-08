@@ -12,29 +12,22 @@
 #include <QOpenGLFunctions>
 
 void
-blitFramebuffer(QOpenGLFramebufferObject* target, QOpenGLFramebufferObject* source)
+blitFramebuffer(QOpenGLFramebufferObject* target, ::std::unique_ptr<QOpenGLFramebufferObject> source)
 {
-    QOpenGLFramebufferObject::blitFramebuffer(target, source);
+    Q_ASSERT(target != nullptr);
+    Q_ASSERT(source != nullptr);
+    QOpenGLFramebufferObject::blitFramebuffer(target, source.get());
 }
 
-QOpenGLFramebufferObject*
+::std::unique_ptr<QOpenGLFramebufferObject>
 fboFromTexture(unsigned int texture_id, unsigned int texture_target, QSize size)
 {
     QOpenGLFunctions *f = QOpenGLContext::currentContext()->functions();
 
-    auto fbo = new QOpenGLFramebufferObject(size);
+    auto fbo = ::std::make_unique<QOpenGLFramebufferObject>(size);
     f->glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, texture_target, texture_id, 0);
     Q_ASSERT(fbo->isValid());
     return fbo;
-}
-
-void
-freeFbo(QOpenGLFramebufferObject* fbo)
-{
-    if (fbo != nullptr)
-    {
-        delete fbo;
-    }
 }
 
 ::rust::isize

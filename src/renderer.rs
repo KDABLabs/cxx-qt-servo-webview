@@ -25,7 +25,7 @@ pub(crate) mod qobject {
         #[cxx_name = "blitFramebuffer"]
         unsafe fn blit_framebuffer(
             target: *mut QOpenGLFramebufferObject,
-            source: *mut QOpenGLFramebufferObject,
+            source: UniquePtr<QOpenGLFramebufferObject>,
         );
 
         include!("cxx-qt-lib/qsize.h");
@@ -36,12 +36,7 @@ pub(crate) mod qobject {
             texture_id: u32,
             texture_target: u32,
             size: QSize,
-        ) -> *mut QOpenGLFramebufferObject;
-
-        #[cxx_name = "freeFbo"]
-        unsafe fn free_fbo(
-            fbo: *mut QOpenGLFramebufferObject
-        );
+        ) -> UniquePtr<QOpenGLFramebufferObject>;
     }
 
     unsafe extern "RustQt" {
@@ -102,6 +97,8 @@ impl qobject::QServoRenderer {
     }
 
     fn render(mut self: Pin<&mut Self>) {
+        println!("render start");
+
         // Ask to borrow a surface
         let (take_sender, take_receiver) = mpsc::sync_channel(0);
         let (recycle_sender, recycle_receiver) = mpsc::sync_channel(0);
@@ -128,15 +125,12 @@ impl qobject::QServoRenderer {
                         let target = device.surface_gl_texture_target();
 
                         // Build a source FBO from the texture
+                        //
+                        // Note that this is a unique_ptr which is freed when bliting
                         let fbo_source = qobject::fbo_from_texture(object, target, size);
-
-                        println!("render!");
 
                         // Blit source FBO to the target FBO
                         unsafe { qobject::blit_framebuffer(fbo_target, fbo_source) };
-
-                        // Free the fbo
-                        unsafe { qobject::free_fbo(fbo_source) };
 
                         // Destory the texture and return the surface back to the background thread
                         let surface = device.destroy_surface_texture(context, texture);
@@ -153,6 +147,8 @@ impl qobject::QServoRenderer {
         } else {
             recycle_sender.send(None).unwrap();
         }
+
+        println!("render end");
     }
 
     unsafe fn synchronize(mut self: Pin<&mut Self>, item: *mut qobject::QQuickFramebufferObject) {

@@ -29,13 +29,10 @@ template<typename T, typename... Args>
 }
 
 void
-blitFramebuffer(QOpenGLFramebufferObject* target, QOpenGLFramebufferObject* source);
+blitFramebuffer(QOpenGLFramebufferObject* target, ::std::unique_ptr<QOpenGLFramebufferObject> source);
 
-QOpenGLFramebufferObject*
+::std::unique_ptr<QOpenGLFramebufferObject>
 fboFromTexture(unsigned int texture_id, unsigned int texture_target, QSize size);
-
-void
-freeFbo(QOpenGLFramebufferObject* fbo);
 
 // Alias for QEventPoint::State
 //
