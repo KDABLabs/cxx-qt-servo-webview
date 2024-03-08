@@ -28,6 +28,15 @@ fboFromTexture(unsigned int texture_id, unsigned int texture_target, QSize size)
     return fbo;
 }
 
+void
+freeFbo(QOpenGLFramebufferObject* fbo)
+{
+    if (fbo != nullptr)
+    {
+        delete fbo;
+    }
+}
+
 ::rust::isize
 qTouchEventPointCount(QTouchEvent const& event)
 {

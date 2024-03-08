@@ -37,6 +37,11 @@ pub(crate) mod qobject {
             texture_target: u32,
             size: QSize,
         ) -> *mut QOpenGLFramebufferObject;
+
+        #[cxx_name = "freeFbo"]
+        unsafe fn free_fbo(
+            fbo: *mut QOpenGLFramebufferObject
+        );
     }
 
     unsafe extern "RustQt" {
@@ -129,6 +134,9 @@ impl qobject::QServoRenderer {
 
                         // Blit source FBO to the target FBO
                         unsafe { qobject::blit_framebuffer(fbo_target, fbo_source) };
+
+                        // Free the fbo
+                        unsafe { qobject::free_fbo(fbo_source) };
 
                         // Destory the texture and return the surface back to the background thread
                         let surface = device.destroy_surface_texture(context, texture);

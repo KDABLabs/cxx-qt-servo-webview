@@ -34,6 +34,9 @@ blitFramebuffer(QOpenGLFramebufferObject* target, QOpenGLFramebufferObject* sour
 QOpenGLFramebufferObject*
 fboFromTexture(unsigned int texture_id, unsigned int texture_target, QSize size);
 
+void
+freeFbo(QOpenGLFramebufferObject* fbo);
+
 // Alias for QEventPoint::State
 //
 // TODO: if events were in cxx-qt-lib we wouldn't need this
