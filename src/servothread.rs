@@ -132,54 +132,63 @@ impl QServoThread {
                 }
                 QServoMessage::Heartbeat(sender) => {
                     // Browser process servo events
-                    let servo_events = self.servo.get_events();
-                    let response = self.browser.handle_servo_events(servo_events);
+                    let mut servo_events = self.servo.get_events();
 
-                    // Handle the responses from browser events to Qt
-                    self.qt_thread
-                        .queue(move |mut webview| {
-                            if let Some(title) = response.title {
-                                webview.as_mut().set_title(QString::from(&title));
-                            }
-                            if let Some(loading) = response.loading {
-                                webview.as_mut().set_loading(loading);
-                            }
-                            if let Some(favicon_url) = response.favicon_url {
-                                webview.as_mut().set_favicon_url(QUrl::from(&favicon_url));
-                            }
-                            if let Some(url) = response.url {
-                                webview.as_mut().set_url(QUrl::from(&url));
-                            }
-                        })
-                        .unwrap();
+                    loop {
+                        let response = self.browser.handle_servo_events(servo_events);
 
-                    // Present when required
-                    let need_present = response.present.unwrap_or(false);
+                        // Handle the responses from browser events to Qt
+                        self.qt_thread
+                            .queue(move |mut webview| {
+                                if let Some(title) = response.title {
+                                    webview.as_mut().set_title(QString::from(&title));
+                                }
+                                if let Some(loading) = response.loading {
+                                    webview.as_mut().set_loading(loading);
+                                }
+                                if let Some(favicon_url) = response.favicon_url {
+                                    webview.as_mut().set_favicon_url(QUrl::from(&favicon_url));
+                                }
+                                if let Some(url) = response.url {
+                                    webview.as_mut().set_url(QUrl::from(&url));
+                                }
+                            })
+                            .unwrap();
 
-                    // Servo process browser events
-                    let browser_events = self.browser.get_events();
-                    let need_resize = self.servo.handle_events(browser_events);
+                        // Present when required
+                        let need_present = response.present.unwrap_or(false);
 
-                    // If we have resized then we need to force a repaint synchornously
-                    //
-                    // This is the same as Present::Immediate in servoshell
-                    // Resizes are unusual in that we need to repaint synchronously.
-                    // TODO(servo#30049) can we replace this with the simpler Servo::recomposite?
-                    if need_resize {
-                        println!("repaint_synchronously");
-                        self.servo.repaint_synchronously();
-                    } else {
-                        // If we aren't resizing then ensure the compositor is ready
-                        // otherwise after a resize we can have an empty frame
-                        self.servo.recomposite();
-                    }
+                        // Servo process browser events
+                        let browser_events = self.browser.get_events();
+                        let need_resize = self.servo.handle_events(browser_events);
 
-                    // Instead we do this after recycle_surface as this avoids issues
-                    // with the surface becoming empty after resize
-                    // Present if we resized or need to present
-                    if need_present || need_resize {
-                        println!("present!");
-                        self.servo.present();
+                        // If we have resized then we need to force a repaint synchornously
+                        //
+                        // This is the same as Present::Immediate in servoshell
+                        // Resizes are unusual in that we need to repaint synchronously.
+                        // TODO(servo#30049) can we replace this with the simpler Servo::recomposite?
+                        if need_resize {
+                            println!("repaint_synchronously");
+                            self.servo.repaint_synchronously();
+                        } else {
+                            // If we aren't resizing then ensure the compositor is ready
+                            // otherwise after a resize we can have an empty frame
+                            self.servo.recomposite();
+                        }
+
+                        // Instead we do this after recycle_surface as this avoids issues
+                        // with the surface becoming empty after resize
+                        // Present if we resized or need to present
+                        if need_present || need_resize {
+                            println!("present!");
+                            self.servo.present();
+                        }
+
+                        servo_events = self.servo.get_events();
+                        // There could be more events so loop around if there are
+                        if servo_events.len() == 0 {
+                            break;
+                        }
                     }
 
                     // Indicate that we have completed the heartbeat
