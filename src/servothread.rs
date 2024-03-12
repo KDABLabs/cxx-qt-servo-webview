@@ -31,7 +31,7 @@ pub(crate) enum QServoMessage {
     RawEmbeddedEvent(EmbedderEvent),
     Resize(Size2D<i32, DevicePixel>),
     Url(ServoUrl),
-    Heartbeat(SyncSender<()>),
+    Heartbeat(SyncSender<()>, bool),
     BorrowSurface(SyncSender<Option<Surface>>, Receiver<Option<Surface>>),
     Quit,
 }
@@ -130,7 +130,7 @@ impl QServoThread {
                         swap_chain.recycle_surface(surface);
                     }
                 }
-                QServoMessage::Heartbeat(sender) => {
+                QServoMessage::Heartbeat(sender, navigation_allowed) => {
                     // Browser process servo events
                     let mut need_present = false;
                     let mut need_resize = false;
@@ -138,7 +138,9 @@ impl QServoThread {
                     {
                         let mut servo_events = self.servo.get_events();
                         loop {
-                            let response = self.browser.handle_servo_events(servo_events);
+                            let response = self
+                                .browser
+                                .handle_servo_events(servo_events, navigation_allowed);
 
                             // Handle the responses from browser events to Qt
                             self.qt_thread
@@ -154,6 +156,11 @@ impl QServoThread {
                                     }
                                     if let Some(url) = response.url {
                                         webview.as_mut().set_url(QUrl::from(&url));
+                                    }
+                                    if let Some(url) = response.blocked_navigation_request {
+                                        webview
+                                            .as_mut()
+                                            .blocked_navigation_request(QUrl::from(&url));
                                     }
                                 })
                                 .unwrap();

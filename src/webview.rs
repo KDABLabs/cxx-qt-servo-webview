@@ -59,6 +59,7 @@ pub(crate) mod qobject {
         #[qml_element]
         #[qproperty(QUrl, favicon_url)]
         #[qproperty(bool, loading)]
+        #[qproperty(bool, navigation_allowed)]
         #[qproperty(QString, title)]
         #[qproperty(QUrl, url)]
         type ServoWebView = super::QServoWebViewRust;
@@ -84,6 +85,9 @@ pub(crate) mod qobject {
 
         #[inherit]
         fn update(self: Pin<&mut ServoWebView>);
+
+        #[qsignal]
+        fn blocked_navigation_request(self: Pin<&mut ServoWebView>, blocked_url: QUrl);
     }
 
     unsafe extern "C++" {
@@ -313,7 +317,6 @@ fn get_servo_code_from_scancode(code: i32) -> Code {
     }
 }
 
-#[derive(Default)]
 pub struct QServoWebViewRust {
     favicon_url: QUrl,
     loading: bool,
@@ -321,6 +324,21 @@ pub struct QServoWebViewRust {
     url: QUrl,
     pub(crate) events: Vec<EmbedderEvent>,
     press_position: Option<QPointF>,
+    navigation_allowed: bool,
+}
+
+impl Default for QServoWebViewRust {
+    fn default() -> Self {
+        Self {
+            favicon_url: QUrl::default(),
+            loading: false,
+            title: QString::default(),
+            url: QUrl::default(),
+            events: vec![],
+            press_position: None,
+            navigation_allowed: true,
+        }
+    }
 }
 
 impl qobject::ServoWebView {

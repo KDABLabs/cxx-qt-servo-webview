@@ -20,6 +20,7 @@ pub(crate) struct QServoBrowserResponse {
     pub(crate) title: Option<String>,
     pub(crate) loading: Option<bool>,
     pub(crate) url: Option<url::Url>,
+    pub(crate) blocked_navigation_request: Option<url::Url>,
 }
 
 #[derive(Default)]
@@ -44,6 +45,7 @@ impl QServoBrowser {
     pub fn handle_servo_events(
         &mut self,
         events: Drain<'_, (Option<WebViewId>, EmbedderMsg)>,
+        navigation_allowed: bool,
     ) -> QServoBrowserResponse {
         let mut response = QServoBrowserResponse::default();
 
@@ -57,10 +59,18 @@ impl QServoBrowser {
                 EmbedderMsg::AllowNavigationRequest(pipeline_id, url) => {
                     if let Some(_webview_id) = webview_id {
                         self.event_queue
-                            .push(EmbedderEvent::AllowNavigationResponse(pipeline_id, true));
+                            .push(EmbedderEvent::AllowNavigationResponse(
+                                pipeline_id,
+                                navigation_allowed,
+                            ));
 
-                        // There is a new URL
-                        response.url = Some(url.into_url());
+                        let url = url.into_url();
+                        if navigation_allowed {
+                            // There is a new URL
+                            response.url = Some(url);
+                        } else {
+                            response.blocked_navigation_request = Some(url);
+                        }
                     }
                 }
                 EmbedderMsg::WebViewOpened(new_webview_id) => {
