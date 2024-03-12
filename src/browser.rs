@@ -49,6 +49,11 @@ impl QServoBrowser {
 
         for (webview_id, msg) in events {
             match msg {
+                // Do not allow for opening a new tab / window
+                // Not handling this crashes the webview
+                EmbedderMsg::AllowOpeningWebView(ipc) => {
+                    ipc.send(false).unwrap();
+                }
                 EmbedderMsg::AllowNavigationRequest(pipeline_id, url) => {
                     if let Some(_webview_id) = webview_id {
                         self.event_queue
