@@ -219,7 +219,7 @@ impl qobject::QServoRenderer {
             }
 
             // Process any converted events from Qt
-            let events: Vec<EmbedderEvent> = webview.rust_mut().events.drain(..).collect();
+            let events: Vec<EmbedderEvent> = webview.as_mut().rust_mut().events.drain(..).collect();
             for event in events.into_iter() {
                 self.as_ref()
                     .servo_sender
@@ -230,12 +230,16 @@ impl qobject::QServoRenderer {
             }
 
             // Process any pending events
+            let navigation_allowed = *webview.as_ref().navigation_allowed();
             let (heartbeat_sender, heartbeat_receiver) = mpsc::sync_channel(0);
             self.as_ref()
                 .servo_sender
                 .as_ref()
                 .unwrap()
-                .send(QServoMessage::Heartbeat(heartbeat_sender))
+                .send(QServoMessage::Heartbeat(
+                    heartbeat_sender,
+                    navigation_allowed,
+                ))
                 .unwrap();
             // Wait for response, otherwise if we enter render() while the
             // heartbeat is running flickering can occur
