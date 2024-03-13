@@ -59,7 +59,7 @@ Window {
                 text: webView.url
                 placeholderText: qsTr("Url...")
                 onAccepted: {
-		   webView.url = textInputUrl.text
+                    webView.url = textInputUrl.text
                 }
             }
 
