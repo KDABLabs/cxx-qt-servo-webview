@@ -25,16 +25,26 @@ pub(crate) mod qobject {
         fn set_mirror_vertically(self: Pin<&mut ServoWebView>, enable: bool);
     }
 
+    /// This enum specifies why the focus changed. It will be passed through QWidget::setFocus
+    /// and can be retrieved in the QFocusEvent sent to the widget upon focus change.
     #[namespace = "Qt"]
     #[repr(i32)]
     enum FocusReason {
+        /// A mouse action occurred.
         MouseFocusReason,
+        /// The Tab key was pressed.
         TabFocusReason,
+        /// A Backtab occurred. The input for this may include the Shift or Control keys; e.g. Shift+Tab.
         BacktabFocusReason,
+        /// The window system made this window either active or inactive.
         ActiveWindowFocusReason,
+        /// The application opened/closed a pop-up that grabbed/released the keyboard focus.
         PopupFocusReason,
+        /// The user typed a label's buddy shortcut
         ShortcutFocusReason,
+        /// The menu bar took focus.
         MenuBarFocusReason,
+        /// Another reason, usually application-specific.
         OtherFocusReason,
     }
 
