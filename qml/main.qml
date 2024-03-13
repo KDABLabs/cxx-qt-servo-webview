@@ -59,11 +59,17 @@ Window {
                 text: webView.url
                 placeholderText: qsTr("Url...")
                 onAccepted: {
-                    webView.url = textInputUrl.text
+                    if (goButton.enabled) {
+                        goButton.clicked();
+                    }
+                }
+                onTextChanged: {
+                    goButton.enabled = textInputUrl.text.length > 0
                 }
             }
 
             Button {
+                id: goButton
                 text: qsTr("Go")
 
                 onClicked: webView.url = textInputUrl.text
