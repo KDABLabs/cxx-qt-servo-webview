@@ -184,18 +184,23 @@ impl qobject::QServoRenderer {
             // Check if we have a new URL
             let url = webview.as_ref().url().clone();
             if url != self.url {
-                self.as_mut().rust_mut().url = url;
+                if url.is_valid() {
+                    self.as_mut().rust_mut().url = url;
 
-                let servo_url = ServoUrl::from_url(url::Url::try_from(&self.url).unwrap());
-                self.as_ref()
-                    .servo_sender
-                    .as_ref()
-                    .unwrap()
-                    .send(QServoMessage::Url(servo_url))
-                    .unwrap();
+                    let new_url = url::Url::try_from(&self.url);
+                    if new_url.is_ok() {
+                        let servo_url = ServoUrl::from_url(new_url.unwrap());
+                        self.as_ref()
+                            .servo_sender
+                            .as_ref()
+                            .unwrap()
+                            .send(QServoMessage::Url(servo_url))
+                            .unwrap();
 
-                // Clear any favicon
-                webview.as_mut().set_favicon_url(QUrl::default());
+                        // Clear any favicon
+                        webview.as_mut().set_favicon_url(QUrl::default());
+                    }
+                }
             }
 
             let size = webview.as_ref().size().to_size();
