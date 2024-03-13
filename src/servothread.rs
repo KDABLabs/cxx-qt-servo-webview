@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 use std::{
+    collections::HashMap,
     rc::Rc,
     sync::mpsc::{Receiver, SyncSender},
 };
@@ -20,6 +21,7 @@ use servo::{
 };
 use surfman::chains::SwapChainAPI;
 use surfman::{Connection, Surface};
+use url::Url;
 
 use crate::{
     browser::QServoBrowser, embedder::QServoEmbedder, events_loop::QServoEventsLoopWaker,
@@ -28,6 +30,7 @@ use crate::{
 
 // #[derive(Debug)]
 pub(crate) enum QServoMessage {
+    Navigation(i32),
     RawEmbeddedEvent(EmbedderEvent),
     Resize(Size2D<i32, DevicePixel>),
     Url(ServoUrl),
@@ -91,8 +94,25 @@ impl QServoThread {
     }
 
     pub(crate) fn run(&mut self) {
+        let mut current_url = None;
+        let mut favicons = HashMap::<Url, Url>::new();
+
         while let Ok(msg) = self.receiver.recv() {
             match msg {
+                QServoMessage::Navigation(direction) => {
+                    let direction = if direction < 0 {
+                        servo::msg::constellation_msg::TraversalDirection::Back(
+                            direction.abs() as usize
+                        )
+                    } else {
+                        servo::msg::constellation_msg::TraversalDirection::Forward(
+                            direction.abs() as usize
+                        )
+                    };
+
+                    self.browser
+                        .push_event(EmbedderEvent::Navigation(self.browser_id, direction));
+                }
                 QServoMessage::RawEmbeddedEvent(event) => {
                     self.browser.push_event(event);
                 }
@@ -104,6 +124,13 @@ impl QServoThread {
                     self.browser.push_event(EmbedderEvent::Resize);
                 }
                 QServoMessage::Url(url) => {
+                    // Don't update the url if this was the last url
+                    if Some(&url) == current_url.as_ref() {
+                        continue;
+                    }
+
+                    current_url = Some(url.clone());
+
                     // Open a new browser or load the url
                     if let Some(webview_id) = self.browser.webview_id() {
                         self.browser
@@ -138,9 +165,38 @@ impl QServoThread {
                     {
                         let mut servo_events = self.servo.get_events();
                         loop {
-                            let response = self
+                            let mut response = self
                                 .browser
                                 .handle_servo_events(servo_events, navigation_allowed);
+
+                            if let Some(url) = response.url.as_ref() {
+                                // If there is no favicon but we have found one previously
+                                // for this url then set it
+                                if response.favicon_url.is_none() {
+                                    if let Some(favicon) = favicons.get(&url) {
+                                        response.favicon_url = Some(favicon.to_owned());
+                                    }
+                                }
+
+                                current_url = Some(ServoUrl::from_url(url.to_owned()));
+                            }
+
+                            // Store the favicon for the current url
+                            if let Some(favicon) = response.favicon_url.as_ref() {
+                                if let Some(current_url) = current_url.as_ref() {
+                                    favicons.insert(
+                                        current_url.as_url().to_owned(),
+                                        favicon.to_owned(),
+                                    );
+                                }
+                            }
+
+                            // If there is a url but no known favicon then set an empty icon for now
+                            // so that when loading we don't show the old favicon
+                            if response.url.is_some() && response.favicon_url.is_none() {
+                                response.favicon_url =
+                                    Some(Url::parse("https://localhost/emptyfavicon.ico").unwrap());
+                            }
 
                             // Handle the responses from browser events to Qt
                             self.qt_thread
@@ -161,6 +217,12 @@ impl QServoThread {
                                         webview
                                             .as_mut()
                                             .blocked_navigation_request(QUrl::from(&url));
+                                    }
+                                    if let Some(can_go_back) = response.can_go_back {
+                                        webview.as_mut().set_can_go_back(can_go_back);
+                                    }
+                                    if let Some(can_go_forward) = response.can_go_forward {
+                                        webview.as_mut().set_can_go_forward(can_go_forward);
                                     }
                                 })
                                 .unwrap();
