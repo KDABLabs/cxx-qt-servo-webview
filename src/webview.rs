@@ -57,6 +57,8 @@ pub(crate) mod qobject {
         #[qobject]
         #[base = "QQuickFramebufferObject"]
         #[qml_element]
+        #[qproperty(bool, can_go_back)]
+        #[qproperty(bool, can_go_forward)]
         #[qproperty(QUrl, favicon_url)]
         #[qproperty(bool, loading)]
         #[qproperty(bool, navigation_allowed)]
@@ -88,6 +90,12 @@ pub(crate) mod qobject {
 
         #[qsignal]
         fn blocked_navigation_request(self: Pin<&mut ServoWebView>, blocked_url: QUrl);
+
+        #[qinvokable]
+        fn go_back(self: Pin<&mut ServoWebView>);
+
+        #[qinvokable]
+        fn go_forward(self: Pin<&mut ServoWebView>);
     }
 
     unsafe extern "C++" {
@@ -318,6 +326,8 @@ fn get_servo_code_from_scancode(code: i32) -> Code {
 }
 
 pub struct QServoWebViewRust {
+    can_go_back: bool,
+    can_go_forward: bool,
     favicon_url: QUrl,
     loading: bool,
     title: QString,
@@ -325,11 +335,14 @@ pub struct QServoWebViewRust {
     pub(crate) events: Vec<EmbedderEvent>,
     press_position: Option<QPointF>,
     navigation_allowed: bool,
+    pub(crate) navigation_direction: Option<i32>,
 }
 
 impl Default for QServoWebViewRust {
     fn default() -> Self {
         Self {
+            can_go_back: false,
+            can_go_forward: false,
             favicon_url: QUrl::default(),
             loading: false,
             title: QString::default(),
@@ -337,6 +350,7 @@ impl Default for QServoWebViewRust {
             events: vec![],
             press_position: None,
             navigation_allowed: true,
+            navigation_direction: None,
         }
     }
 }
@@ -344,6 +358,16 @@ impl Default for QServoWebViewRust {
 impl qobject::ServoWebView {
     fn create_renderer(&self) -> *mut qobject::QQuickFramebufferObjectRenderer {
         QServoRenderer::new().into_raw() as *mut qobject::QQuickFramebufferObjectRenderer
+    }
+
+    fn go_back(mut self: Pin<&mut Self>) {
+        self.as_mut().rust_mut().navigation_direction = Some(-1);
+        self.as_mut().update();
+    }
+
+    fn go_forward(mut self: Pin<&mut Self>) {
+        self.as_mut().rust_mut().navigation_direction = Some(1);
+        self.as_mut().update();
     }
 
     fn key_event(mut self: Pin<&mut Self>, event: *mut qobject::QKeyEvent, state: KeyState) {

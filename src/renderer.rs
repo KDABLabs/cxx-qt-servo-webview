@@ -196,9 +196,6 @@ impl qobject::QServoRenderer {
                             .unwrap()
                             .send(QServoMessage::Url(servo_url))
                             .unwrap();
-
-                        // Clear any favicon
-                        webview.as_mut().set_favicon_url(QUrl::default());
                     }
                 }
             }
@@ -215,6 +212,15 @@ impl qobject::QServoRenderer {
                         self.size.width(),
                         self.size.height(),
                     )))
+                    .unwrap();
+            }
+
+            if let Some(direction) = webview.as_mut().rust_mut().navigation_direction.take() {
+                self.as_ref()
+                    .servo_sender
+                    .as_ref()
+                    .unwrap()
+                    .send(QServoMessage::Navigation(direction))
                     .unwrap();
             }
 

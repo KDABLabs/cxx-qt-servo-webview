@@ -21,6 +21,8 @@ pub(crate) struct QServoBrowserResponse {
     pub(crate) loading: Option<bool>,
     pub(crate) url: Option<url::Url>,
     pub(crate) blocked_navigation_request: Option<url::Url>,
+    pub(crate) can_go_back: Option<bool>,
+    pub(crate) can_go_forward: Option<bool>,
 }
 
 #[derive(Default)]
@@ -102,6 +104,11 @@ impl QServoBrowser {
                 }
                 EmbedderMsg::ReadyToPresent => {
                     response.present = Some(true);
+                }
+                EmbedderMsg::HistoryChanged(urls, position) => {
+                    response.url = Some(urls[position].as_url().to_owned());
+                    response.can_go_back = Some(position > 0);
+                    response.can_go_forward = Some(position < (urls.len() - 1));
                 }
                 // TODO: this is where page up/down or shortcuts are handled
                 // EmbedderMsg::Keyboard(key_event) => {}
