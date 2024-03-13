@@ -30,7 +30,7 @@ impl QServoWindowHeadless {
             .expect("Failed to create WR surfman");
 
         Self {
-            rendering_context: rendering_context,
+            rendering_context,
             animation_state: Cell::new(AnimationState::Idle),
         }
     }
