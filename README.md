@@ -14,8 +14,8 @@ TODO
 We need the nightly compiler for now.
 
 ```console
-rustup install nightly
-rustup default nightly
+rustup install nightly-2024-02-01
+rustup default nightly-2024-02-01
 ```
 
 # Notes
