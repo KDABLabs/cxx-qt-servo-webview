@@ -57,6 +57,10 @@ Window {
                 id: textInputUrl
                 Layout.fillWidth: true
                 text: webView.url
+                placeholderText: qsTr("Url...")
+                onAccepted: {
+		   webView.url = textInputUrl.text
+                }
             }
 
             Button {
