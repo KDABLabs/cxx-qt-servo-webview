@@ -102,11 +102,11 @@ impl QServoThread {
                 QServoMessage::Navigation(direction) => {
                     let direction = if direction < 0 {
                         servo::msg::constellation_msg::TraversalDirection::Back(
-                            direction.abs() as usize
+                            direction.unsigned_abs() as usize,
                         )
                     } else {
                         servo::msg::constellation_msg::TraversalDirection::Forward(
-                            direction.abs() as usize
+                            direction.unsigned_abs() as usize,
                         )
                     };
 
@@ -173,7 +173,7 @@ impl QServoThread {
                                 // If there is no favicon but we have found one previously
                                 // for this url then set it
                                 if response.favicon_url.is_none() {
-                                    if let Some(favicon) = favicons.get(&url) {
+                                    if let Some(favicon) = favicons.get(url) {
                                         response.favicon_url = Some(favicon.to_owned());
                                     }
                                 }

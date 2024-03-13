@@ -374,8 +374,7 @@ impl qobject::ServoWebView {
         if let Some(event) = unsafe { event.as_ref() } {
             let keyboard_event = KeyboardEvent {
                 state,
-                key: Key::from_str(&String::from(&event.text()))
-                    .unwrap_or_else(|_| Key::Unidentified),
+                key: Key::from_str(&String::from(&event.text())).unwrap_or(Key::Unidentified),
                 code: get_servo_code_from_scancode(event.key()),
                 repeat: event.is_auto_repeat(),
                 // TODO: handle these correctly
