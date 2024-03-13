@@ -63,13 +63,11 @@ Window {
                         goButton.clicked();
                     }
                 }
-                onTextChanged: {
-                    goButton.enabled = textInputUrl.text.length > 0
-                }
             }
 
             Button {
                 id: goButton
+                enabled: textInputUrl.text.length > 0
                 text: qsTr("Go")
 
                 onClicked: webView.url = textInputUrl.text
