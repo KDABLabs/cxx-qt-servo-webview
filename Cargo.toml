@@ -20,6 +20,9 @@ glow = "0.12.2"
 raw-window-handle = "0.5"
 url = "2.3"
 
+# Note that we cannot run cargo update on the lock file
+# instead copy the lock file from the servo repository
+# then cargo run will add the missing dependencies to the lock file
 libservo = { git = "https://github.com/servo/servo.git", rev = "3a3e76a935f92ce84c24496cfc46207cd46088f6" }
 servo-media = { git = "https://github.com/servo/media" }
 surfman = { version = "0.9", features = ["chains", "sm-angle", "sm-angle-default"] }
