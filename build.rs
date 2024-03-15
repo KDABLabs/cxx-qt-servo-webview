@@ -13,7 +13,12 @@ fn main() {
         .qml_module(QmlModule {
             uri: "com.kdab.servo",
             rust_files: &["src/webview.rs"],
-            qml_files: &["qml/main.qml"],
+            qml_files: &["qml/main.qml", "qml/ServoToolbar.qml"],
+            qrc_files: &[
+                "images/arrow-back.png",
+                "images/arrow-forward.png",
+                "images/search.png",
+            ],
             ..Default::default()
         })
         .cc_builder(|cc| {

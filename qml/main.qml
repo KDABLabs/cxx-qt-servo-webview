@@ -12,68 +12,30 @@ import com.kdab.servo 1.0
 
 Window {
     id: root
-    height: 10 + 16 + 10 + 20 + 10 + 400 + 10
-    title: qsTr("Servo CXX-Qt")
+    color: "white"
+    title: webView.title
     visible: true
-    width: 420
+    height: 800
+    width: 1280
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 10
-        spacing: 10
+        spacing: 0
 
-        RowLayout {
-            height: 16
+        ServoToolbar {
+            id: toolbar
+            canGoBack: webView.canGoBack
+            canGoForward: webView.canGoForward
+            faviconUrl: webView.faviconUrl
+            webViewUrl: webView.url
             Layout.fillWidth: true
-            spacing: 10
 
-            Image {
-                height: 16
-                source: webView.faviconUrl
-                sourceSize.height: 16
-                sourceSize.width: 16
-                width: 16
-                visible: status === Image.Ready
-            }
-
-            Label {
-                elide: Text.ElideRight
-                font.pixelSize: 16
-                Layout.fillWidth: true
-                text: webView.title
-            }
-
-            Item {
-                Layout.fillWidth: true
-            }
+            onGoBack: webView.goBack()
+            onGoForward: webView.goForward()
+            onUrlRequest: (requestedUrl) => webView.url = requestedUrl
         }
 
-        RowLayout {
-            height: 20
-            Layout.fillWidth: true
-            spacing: 10
-
-            TextField {
-                id: textInputUrl
-                Layout.fillWidth: true
-                text: webView.url
-                placeholderText: qsTr("Url...")
-                onAccepted: {
-                    if (goButton.enabled) {
-                        goButton.clicked();
-                    }
-                }
-            }
-
-            Button {
-                id: goButton
-                enabled: textInputUrl.text.length > 0
-                text: qsTr("Go")
-
-                onClicked: webView.url = textInputUrl.text
-            }
-        }
-
+        // Servo webview
         ServoWebView {
             id: webView
             Layout.fillHeight: true
@@ -82,9 +44,14 @@ Window {
         }
     }
 
-    BusyIndicator {
-        anchors.centerIn: parent
-        running: webView.loading
-        visible: running
+    // Progress bar at the bottom overlaying the Servo WebView
+    // so that we don't have a flicker when it's hidden as this doesn't cause a resize
+    ProgressBar {
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: 10
+        indeterminate: true
+        visible: webView.loading
     }
 }
