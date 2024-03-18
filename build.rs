@@ -12,7 +12,7 @@ fn main() {
         .qt_module("OpenGL")
         .qml_module(QmlModule {
             uri: "com.kdab.servo",
-            rust_files: &["src/webview.rs"],
+            rust_files: &["src/webview.rs", "src/main.rs"],
             qml_files: &["qml/main.qml", "qml/ServoToolbar.qml"],
             qrc_files: &[
                 "images/arrow-back.png",
