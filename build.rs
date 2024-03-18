@@ -24,6 +24,7 @@ fn main() {
         .cc_builder(|cc| {
             cc.include("cpp");
             cc.file("cpp/helpers.cpp");
+            println!("cargo:rerun-if-changed=cpp/helpers.cpp");
         })
         .file("src/renderer.rs")
         .qobject_header("cpp/helpers.h")
