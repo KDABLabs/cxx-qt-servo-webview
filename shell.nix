@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 with import <nixpkgs> {};
-with import <nixgl> { enable32bits = false; };
+with import (fetchTarball "https://github.com/nix-community/nixGL/archive/489d6b095ab9d289fe11af0219a9ff00fe87c7c5.tar.gz") { enable32bits = false; };
 let
 	llvmPackages = llvmPackages_14;
 	stdenv = stdenvAdapters.useMoldLinker clangStdenv;
