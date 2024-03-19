@@ -10,6 +10,7 @@ mod embedder;
 mod events_loop;
 mod renderer;
 mod servothread;
+mod servohelper;
 mod webview;
 mod windowheadless;
 

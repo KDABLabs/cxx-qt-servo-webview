@@ -15,6 +15,9 @@ pub(crate) mod qobject {
 
         #[cxx_name = "constructUniquePtr"]
         fn qservo_renderer_unique_ptr() -> UniquePtr<QServoRenderer>;
+
+        #[cxx_name = "resetOpenGLState"]
+        fn reset_opengl_state();
     }
 
     unsafe extern "C++" {
@@ -57,36 +60,25 @@ pub(crate) mod qobject {
     impl cxx_qt::Constructor<()> for QServoRenderer {}
 }
 
-use crate::{
-    servothread::{QServoMessage, QServoThread},
-    webview::qobject::ServoWebView,
-};
+use crate::{servohelper::QServoHelper, webview::qobject::ServoWebView};
 use core::pin::Pin;
 use cxx_qt::{CxxQtType, Threading};
 use cxx_qt_lib::{QSize, QUrl};
 use euclid::Size2D;
 use servo::{compositing::windowing::EmbedderEvent, servo_url::ServoUrl};
-use std::sync::mpsc::{self, Sender};
-use surfman::{Context, Device};
+use surfman::Connection;
 
 #[derive(Default)]
 pub struct QServoRendererRust {
     size: QSize,
     url: QUrl,
-    servo_sender: Option<Sender<QServoMessage>>,
-    qt_gl: Option<(Device, Context)>,
+    servo: Option<QServoHelper>,
 }
 
 impl Drop for QServoRendererRust {
     fn drop(&mut self) {
-        self.servo_sender
-            .as_ref()
-            .unwrap()
-            .send(QServoMessage::Quit)
-            .unwrap();
-
-        if let Some((device, mut context)) = self.qt_gl.take() {
-            device.destroy_context(&mut context).unwrap();
+        if let Some(servo) = self.servo.as_mut() {
+            servo.quit();
         }
     }
 }
@@ -99,56 +91,29 @@ impl qobject::QServoRenderer {
     fn render(mut self: Pin<&mut Self>) {
         println!("render start");
 
-        // Ask to borrow a surface
-        let (take_sender, take_receiver) = mpsc::sync_channel(0);
-        let (recycle_sender, recycle_receiver) = mpsc::sync_channel(0);
-        self.servo_sender
-            .as_ref()
-            .unwrap()
-            .send(QServoMessage::BorrowSurface(take_sender, recycle_receiver))
-            .unwrap();
+        // Find the target fbo
+        let fbo_target = self.as_ref().framebuffer_object();
+        let size = self.as_ref().size.clone();
 
-        // Wait for the response from the background thread
-        let surface = take_receiver.recv();
-        if let Ok(Some(surface)) = surface {
-            // Find the target fbo
-            let fbo_target = self.as_ref().framebuffer_object();
-            let size = self.as_ref().size.clone();
+        if let Some(servo) = self.as_mut().rust_mut().servo.as_mut() {
+            if let Some((texture, object, target)) = servo.borrow_surface_texture() {
+                // Build a source FBO from the texture
+                //
+                // Note that this is a unique_ptr which is freed when bliting
+                let fbo_source = qobject::fbo_from_texture(object, target, size);
 
-            if let Some((ref mut device, ref mut context)) = self.as_mut().rust_mut().qt_gl.as_mut()
-            {
-                // Build a texture from the surface
-                match device.create_surface_texture(context, surface) {
-                    Ok(texture) => {
-                        // Retrieve the texture info
-                        let object = device.surface_texture_object(&texture);
-                        let target = device.surface_gl_texture_target();
+                // Blit source FBO to the target FBO
+                unsafe { qobject::blit_framebuffer(fbo_target, fbo_source) };
 
-                        // Build a source FBO from the texture
-                        //
-                        // Note that this is a unique_ptr which is freed when bliting
-                        let fbo_source = qobject::fbo_from_texture(object, target, size);
-
-                        // Blit source FBO to the target FBO
-                        unsafe { qobject::blit_framebuffer(fbo_target, fbo_source) };
-
-                        // Destory the texture and return the surface back to the background thread
-                        let surface = device.destroy_surface_texture(context, texture);
-                        recycle_sender.send(surface.ok()).unwrap();
-                    }
-                    Err((_, surface)) => {
-                        // Return the surface back to the background thread
-                        recycle_sender.send(Some(surface)).unwrap();
-                    }
-                }
-            } else {
-                recycle_sender.send(Some(surface)).unwrap();
+                servo.recycle_surface_texture(texture);
             }
-        } else {
-            recycle_sender.send(None).unwrap();
         }
 
         println!("render end");
+
+        qobject::reset_opengl_state();
+
+        println!("reset opengl state!");
     }
 
     unsafe fn synchronize(mut self: Pin<&mut Self>, item: *mut qobject::QQuickFramebufferObject) {
@@ -158,27 +123,24 @@ impl qobject::QServoRenderer {
             let mut webview = Pin::new_unchecked(webview_ref);
 
             // Start the Servo worker thread if there isn't one
-            if self.as_ref().servo_sender.is_none() {
+            if self.as_ref().servo.is_none() {
                 let qt_thread = webview.qt_thread();
-                let (servo_sender, servo_receiver) = mpsc::channel();
 
-                use surfman::platform::generic::multi;
-                use surfman::platform::unix::wayland;
-                let native_connection = wayland::connection::NativeConnection::current()
-                    .expect("Failed to bootstrap native connection");
-                let wayland_connection = unsafe {
-                    wayland::connection::Connection::from_native_connection(native_connection)
-                        .expect("Failed to bootstrap wayland connection")
-                };
-                let connection = multi::connection::Connection::Default(
-                    multi::connection::Connection::Default(wayland_connection),
-                );
+                let connection = Connection::new().expect("Failed to create connection");
 
-                std::thread::spawn(move || {
-                    QServoThread::new(servo_receiver, qt_thread, connection).run()
-                });
+                // use surfman::platform::generic::multi;
+                // use surfman::platform::unix::wayland;
+                // let native_connection = wayland::connection::NativeConnection::current()
+                //     .expect("Failed to bootstrap native connection");
+                // let wayland_connection = unsafe {
+                //     wayland::connection::Connection::from_native_connection(native_connection)
+                //         .expect("Failed to bootstrap wayland connection")
+                // };
+                // let connection = multi::connection::Connection::Default(
+                //     multi::connection::Connection::Default(wayland_connection),
+                // );
 
-                self.as_mut().rust_mut().servo_sender = Some(servo_sender);
+                self.as_mut().rust_mut().servo = Some(QServoHelper::new(qt_thread, connection));
             }
 
             // Check if we have a new URL
@@ -188,13 +150,9 @@ impl qobject::QServoRenderer {
 
                 let new_url = url::Url::try_from(&self.url);
                 if new_url.is_ok() {
-                    let servo_url = ServoUrl::from_url(new_url.unwrap());
-                    self.as_ref()
-                        .servo_sender
-                        .as_ref()
-                        .unwrap()
-                        .send(QServoMessage::Url(servo_url))
-                        .unwrap();
+                    if let Some(servo) = self.as_mut().rust_mut().servo.as_mut() {
+                        servo.url(ServoUrl::from_url(new_url.unwrap()));
+                    }
                 }
             }
 
@@ -202,52 +160,34 @@ impl qobject::QServoRenderer {
             if size != self.size {
                 self.as_mut().rust_mut().size = size;
 
-                self.as_ref()
-                    .servo_sender
-                    .as_ref()
-                    .unwrap()
-                    .send(QServoMessage::Resize(Size2D::new(
-                        self.size.width(),
-                        self.size.height(),
-                    )))
-                    .unwrap();
+                let (width, height) = (self.size.width(), self.size.height());
+                if let Some(servo) = self.as_mut().rust_mut().servo.as_mut() {
+                    servo.resize(Size2D::new(width, height));
+                }
             }
 
             if let Some(direction) = webview.as_mut().rust_mut().navigation_direction.take() {
-                self.as_ref()
-                    .servo_sender
-                    .as_ref()
-                    .unwrap()
-                    .send(QServoMessage::Navigation(direction))
-                    .unwrap();
+                if let Some(servo) = self.as_mut().rust_mut().servo.as_mut() {
+                    servo.navigation(direction);
+                }
             }
 
             // Process any converted events from Qt
             let events: Vec<EmbedderEvent> = webview.as_mut().rust_mut().events.drain(..).collect();
             for event in events.into_iter() {
-                self.as_ref()
-                    .servo_sender
-                    .as_ref()
-                    .unwrap()
-                    .send(QServoMessage::RawEmbeddedEvent(event))
-                    .unwrap();
+                if let Some(servo) = self.as_mut().rust_mut().servo.as_mut() {
+                    servo.raw_embedded_event(event);
+                }
             }
 
             // Process any pending events
             let navigation_allowed = *webview.as_ref().navigation_allowed();
-            let (heartbeat_sender, heartbeat_receiver) = mpsc::sync_channel(0);
-            self.as_ref()
-                .servo_sender
-                .as_ref()
-                .unwrap()
-                .send(QServoMessage::Heartbeat(
-                    heartbeat_sender,
-                    navigation_allowed,
-                ))
-                .unwrap();
-            // Wait for response, otherwise if we enter render() while the
-            // heartbeat is running flickering can occur
-            heartbeat_receiver.recv().unwrap();
+            let qt_thread = webview.qt_thread();
+            if let Some(servo) = self.as_mut().rust_mut().servo.as_mut() {
+                servo.heartbeat(navigation_allowed, qt_thread);
+            }
+
+            webview.as_mut().update();
         }
 
         println!("sync end");
@@ -255,35 +195,5 @@ impl qobject::QServoRenderer {
 }
 
 impl cxx_qt::Initialize for qobject::QServoRenderer {
-    fn initialize(mut self: core::pin::Pin<&mut Self>) {
-        use surfman::platform::generic::multi;
-        use surfman::platform::unix::wayland;
-        let native_connection = wayland::connection::NativeConnection::current()
-            .expect("Failed to bootstrap native connection");
-        let wayland_connection = unsafe {
-            wayland::connection::Connection::from_native_connection(native_connection)
-                .expect("Failed to bootstrap wayland connection")
-        };
-        let connection = multi::connection::Connection::Default(
-            multi::connection::Connection::Default(wayland_connection),
-        );
-        let adapter = connection
-            .create_software_adapter()
-            .expect("Failed to create adapter");
-        let device = connection
-            .create_device(&adapter)
-            .expect("Failed to bootstrap surfman device");
-        let native_context = {
-            let current = wayland::context::NativeContext::current()
-                .expect("Failed to bootstrap native context");
-            multi::context::NativeContext::Default(multi::context::NativeContext::Default(current))
-        };
-        let context = unsafe {
-            device
-                .create_context_from_native_context(native_context)
-                .expect("Failed to bootstrap surfman context")
-        };
-
-        self.as_mut().rust_mut().qt_gl = Some((device, context));
-    }
+    fn initialize(mut self: core::pin::Pin<&mut Self>) {}
 }

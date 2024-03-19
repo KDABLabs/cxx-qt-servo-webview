@@ -10,6 +10,7 @@
 #include <QOpenGLFramebufferObject>
 #include <QOpenGLContext>
 #include <QOpenGLFunctions>
+#include <QQuickOpenGLUtils>
 #include <QSurfaceFormat>
 
 void
@@ -49,4 +50,9 @@ void forceSurfaceFormat()
     fmt.setVersion(3, 0);
     fmt.setRenderableType(QSurfaceFormat::OpenGLES);
     QSurfaceFormat::setDefaultFormat(fmt);
+}
+
+void resetOpenGLState()
+{
+    QQuickOpenGLUtils::resetOpenGLState();
 }
