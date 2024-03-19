@@ -13,7 +13,7 @@ KDAB has built a demo of using [CXX-Qt](https://github.com/KDAB/cxx-qt/) to expo
 
 * Ensure that you have Qt installed and `qmake` in your `PATH`.
 * Ensure that you have the dependencies of `./mach boostrap` from the [https://github.com/servo/servo/](https://github.com/servo/servo/) repository.
-* Alternatively use the `shell.nix`
+* Alternatively use the `shell.nix` by [installing Nix](https://nixos.org/download/) and then running `nix-shell`, it will take care of all dependencies automatically
 * Install the nightly compiler from February
 
 ```console
@@ -26,6 +26,15 @@ $ rustup default nightly-2024-02-01
 ```console
 $ cargo run --release
 ```
+
+## Debugging
+
+To make sure, that Qt picks the correct OpenGL driver, use the `QSG_INFO=1` variable. For hardware acceleration to work, the driver name should **not** contain `llvmpipe`.
+Note that on embedded hardware it might be necessary to force servo to use OpenGL ES.
+
+### Nix
+
+If you using Nix and if not on NixOS, make sure to run the final executable with the `nixGLMesa` wrapper (or if not on Mesa, with the correct wrapper for your driver). This will make sure that the OpenGL drivers are passed through from the host system with [nixGL](https://github.com/nix-community/nixGL).
 
 ## Licensing
 
