@@ -36,6 +36,19 @@ Note that on embedded hardware it might be necessary to force servo to use OpenG
 
 If you using Nix and if not on NixOS, make sure to run the final executable with the `nixGLMesa` wrapper (or if not on Mesa, with the correct wrapper for your driver). This will make sure that the OpenGL drivers are passed through from the host system with [nixGL](https://github.com/nix-community/nixGL).
 
+## Raspberry Pi
+
+On Raspberry Pi 4 it is still necessary to force OpenGL ES in servo. Otherwise Qt (which auto-picks GLES) will use GLES, while servo uses GL, which will then later crash.
+
+Additionally, for OpenGL ES to work on Raspbian Bookworm, the following host packages need to be manually installed:
+
+- libgles2-mesa-dev
+- libdrm-dev
+
+The driver is passed through to the Nix environment with nixGL.
+
+For further debugging OpenGL ES issues [https://github.com/matusnovak/rpi-opengl-without-x](https://github.com/matusnovak/rpi-opengl-without-x) may be useful.
+
 ## Licensing
 
 This demo is Copyright (C) Klarälvdalens Datakonsult AB, and is available under
