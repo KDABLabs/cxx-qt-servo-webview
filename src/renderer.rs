@@ -174,8 +174,13 @@ impl qobject::QServoRenderer {
                     multi::connection::Connection::Default(wayland_connection),
                 );
 
+                // Pass in the original size of the window
+                // this reduces the glitches where the size of the servo view is lost
+                let size = webview.as_ref().size().to_size();
+                let size = Size2D::new(size.width() as u32, size.height() as u32);
+
                 std::thread::spawn(move || {
-                    QServoThread::new(servo_receiver, qt_thread, connection).run()
+                    QServoThread::new(servo_receiver, qt_thread, connection, size).run()
                 });
 
                 self.as_mut().rust_mut().servo_sender = Some(servo_sender);
