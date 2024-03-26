@@ -15,6 +15,7 @@ use servo::{
     compositing::windowing::{EmbedderEvent, WindowMethods},
     embedder_traits::EventLoopWaker,
     euclid::Size2D,
+    servo_geometry::DeviceIndependentPixel,
     servo_url::ServoUrl,
     style_traits::DevicePixel,
     Servo, TopLevelBrowsingContextId,
@@ -54,11 +55,12 @@ impl QServoThread {
         receiver: Receiver<QServoMessage>,
         qt_thread: CxxQtThread<ServoWebView>,
         connection: Connection,
+        size: Size2D<u32, DeviceIndependentPixel>,
     ) -> Self {
         let event_loop_waker = QServoEventsLoopWaker::new(qt_thread.clone());
         let embedder = Box::new(QServoEmbedder::new(event_loop_waker.clone_box()));
 
-        let window = Rc::new(QServoWindowHeadless::new(Size2D::new(400, 400), connection));
+        let window = Rc::new(QServoWindowHeadless::new(size, connection));
         let user_agent = None;
         // The in-process interface to Servo.
         //
