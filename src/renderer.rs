@@ -66,13 +66,14 @@ use cxx_qt::{CxxQtType, Threading};
 use cxx_qt_lib::{QSize, QUrl};
 use euclid::Size2D;
 use servo::{compositing::windowing::EmbedderEvent, servo_url::ServoUrl};
-use surfman::Connection;
+use surfman::{Connection, Context, Device};
 
 #[derive(Default)]
 pub struct QServoRendererRust {
     size: QSize,
     url: QUrl,
     servo: Option<QServoHelper>,
+    qt_gl: Option<(Device, Context)>,
 }
 
 impl Drop for QServoRendererRust {
@@ -95,8 +96,9 @@ impl qobject::QServoRenderer {
         let fbo_target = self.as_ref().framebuffer_object();
         let size = self.as_ref().size.clone();
 
-        if let Some(servo) = self.as_mut().rust_mut().servo.as_mut() {
-            if let Some((texture, object, target)) = servo.borrow_surface_texture() {
+        let mut rust_mut = self.as_mut().rust_mut();
+        if let Some(servo) = rust_mut.servo.as_mut() {
+            if let Some((texture, object, target)) = servo.borrow_surface_texture2() {
                 // Build a source FBO from the texture
                 //
                 // Note that this is a unique_ptr which is freed when bliting
@@ -105,8 +107,13 @@ impl qobject::QServoRenderer {
                 // Blit source FBO to the target FBO
                 unsafe { qobject::blit_framebuffer(fbo_target, fbo_source) };
 
-                servo.recycle_surface_texture(texture);
+                servo.recycle_surface_texture2(texture);
             }
+
+            // Make Qt the context again
+            //if let Some((ref mut device, ref mut context)) = servo.qt_gl.as_mut() {
+            //    device.make_context_current(context).unwrap();
+            //}
         }
 
         println!("render end");
@@ -140,7 +147,9 @@ impl qobject::QServoRenderer {
                 //     multi::connection::Connection::Default(wayland_connection),
                 // );
 
-                self.as_mut().rust_mut().servo = Some(QServoHelper::new(qt_thread, connection));
+                let qt_gl = self.as_mut().rust_mut().qt_gl.take();
+                self.as_mut().rust_mut().servo =
+                    Some(QServoHelper::new(qt_thread, connection, qt_gl));
             }
 
             // Check if we have a new URL
@@ -195,5 +204,25 @@ impl qobject::QServoRenderer {
 }
 
 impl cxx_qt::Initialize for qobject::QServoRenderer {
-    fn initialize(mut self: core::pin::Pin<&mut Self>) {}
+    fn initialize(mut self: core::pin::Pin<&mut Self>) {
+        use surfman::platform::generic::multi;
+        use surfman::platform::unix::generic::context::NativeContext;
+        let connection = Connection::new().unwrap();
+        let adapter = connection
+            .create_software_adapter()
+            .expect("Failed to create adapter");
+        let device = connection
+            .create_device(&adapter)
+            .expect("Failed to bootstrap surfman device");
+        let native_context = NativeContext::current().unwrap();
+        let context = unsafe {
+            device
+                .create_context_from_native_context(surfman::NativeContext::Default(
+                    multi::context::NativeContext::Default(native_context),
+                ))
+                .expect("Failed to bootstrap surfman context")
+        };
+
+        self.as_mut().rust_mut().qt_gl = Some((device, context));
+    }
 }

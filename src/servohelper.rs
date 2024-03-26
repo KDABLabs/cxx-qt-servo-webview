@@ -16,7 +16,7 @@ use servo::{
     Servo, TopLevelBrowsingContextId,
 };
 use surfman::{chains::SwapChainAPI, SurfaceTexture};
-use surfman::{Connection, Surface};
+use surfman::{Connection, Context, Device, Surface};
 use url::Url;
 
 use crate::{
@@ -30,10 +30,15 @@ pub(crate) struct QServoHelper {
     servo: Servo<QServoWindowHeadless>,
     current_url: Option<ServoUrl>,
     favicons: HashMap<Url, Url>,
+    pub(crate) qt_gl: Option<(Device, Context)>,
 }
 
 impl QServoHelper {
-    pub(crate) fn new(qt_thread: CxxQtThread<ServoWebView>, connection: Connection) -> Self {
+    pub(crate) fn new(
+        qt_thread: CxxQtThread<ServoWebView>,
+        connection: Connection,
+        qt_gl: Option<(Device, Context)>,
+    ) -> Self {
         let event_loop_waker = QServoEventsLoopWaker::new(qt_thread.clone());
         let embedder = Box::new(QServoEmbedder::new(event_loop_waker.clone_box()));
 
@@ -69,6 +74,7 @@ impl QServoHelper {
             browser: QServoBrowser::default(),
             current_url: None,
             favicons: HashMap::<Url, Url>::new(),
+            qt_gl,
         }
     }
 
@@ -147,6 +153,38 @@ impl QServoHelper {
         result
     }
 
+    pub(crate) fn borrow_surface_texture2(&mut self) -> Option<(SurfaceTexture, u32, u32)> {
+        let rendering_context = self.servo.window().rendering_context();
+        let swap_chain = rendering_context.swap_chain().unwrap();
+
+        let surface = swap_chain.take_surface();
+        println!("sending surface: {}", surface.is_some());
+
+        let mut result = None;
+        if let Some((ref mut device, ref mut context)) = self.qt_gl.as_mut() {
+            if let Some(surface) = surface {
+                result = match device.create_surface_texture(context, surface) {
+                    Ok(texture) => {
+                        // Retrieve the texture info
+                        let object = device.surface_texture_object(&texture);
+                        let target = device.surface_gl_texture_target();
+
+                        println!("created surface");
+
+                        Some((texture, object, target))
+                    }
+                    Err((_, surface)) => {
+                        println!("error creating surface");
+                        swap_chain.recycle_surface(surface);
+                        None
+                    }
+                };
+            }
+        }
+
+        result
+    }
+
     pub(crate) fn recycle_surface_texture(&mut self, texture: SurfaceTexture) {
         let rendering_context = self.servo.window().rendering_context();
         let swap_chain = rendering_context.swap_chain().unwrap();
@@ -154,6 +192,18 @@ impl QServoHelper {
         println!("returned surface, recycling");
         if let Ok(surface) = rendering_context.destroy_surface_texture(texture) {
             swap_chain.recycle_surface(surface);
+        }
+    }
+
+    pub(crate) fn recycle_surface_texture2(&mut self, texture: SurfaceTexture) {
+        let rendering_context = self.servo.window().rendering_context();
+        let swap_chain = rendering_context.swap_chain().unwrap();
+
+        println!("returned surface, recycling");
+        if let Some((ref mut device, ref mut context)) = self.qt_gl.as_mut() {
+            if let Ok(surface) = device.destroy_surface_texture(context, texture) {
+                swap_chain.recycle_surface(surface);
+            }
         }
     }
 
