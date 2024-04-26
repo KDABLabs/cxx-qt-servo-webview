@@ -6,10 +6,11 @@
 with import <nixpkgs> {};
 with import (fetchTarball "https://github.com/nix-community/nixGL/archive/489d6b095ab9d289fe11af0219a9ff00fe87c7c5.tar.gz") { enable32bits = false; };
 let
-	llvmPackages = llvmPackages_14;
-	stdenv = stdenvAdapters.useMoldLinker clangStdenv;
+	pkgs_gnumake_4_3 = import (fetchTarball "https://github.com/NixOS/nixpkgs/archive/6adf48f53d819a7b6e15672817fa1e78e5f4e84f.tar.gz") {};
+	llvmPackages = llvmPackages_14; # servo/servo#31059
+	stdenv = stdenvAdapters.useMoldLinker llvmPackages.stdenv;
 in
-	stdenv.mkDerivation {
+	llvmPackages.stdenv.mkDerivation {
 		name = "cxx-qt-servo-webview";
 
 		buildInputs = [
@@ -31,7 +32,7 @@ in
 			llvmPackages.bintools
 			udev
 			cmake dbus gcc git pkg-config which llvm perl yasm m4
-			gnumake
+			pkgs_gnumake_4_3.gnumake # servo/mozjs#375
 			libGL
 			qt6.full
 			stdenv.cc.cc.lib

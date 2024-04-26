@@ -27,6 +27,8 @@ $ rustup default nightly-2024-02-01
 $ cargo run --release
 ```
 
+Note that this demo currently supports Wayland only, not X11.
+
 ## Debugging
 
 To make sure, that Qt picks the correct OpenGL driver, use the `QSG_INFO=1` variable. For hardware acceleration to work, the driver name should **not** contain `llvmpipe`.
