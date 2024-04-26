@@ -13,11 +13,25 @@ mod servothread;
 mod webview;
 mod windowheadless;
 
+#[cxx::bridge]
+mod ffi {
+    unsafe extern "C++" {
+        include!("helpers.h");
+
+        #[cxx_name = "forceSurfaceFormat"]
+        fn force_surface_format();
+    }
+}
+
 fn main() {
     // We need the OpenGL backend for QQuickFramebufferObject
     std::env::set_var("QSG_RHI_BACKEND", "opengl");
 
     let mut app = QGuiApplication::new();
+
+    // Force that we want OpenGLES
+    ffi::force_surface_format();
+
     let mut engine = QQmlApplicationEngine::new();
 
     if let Some(engine) = engine.as_mut() {

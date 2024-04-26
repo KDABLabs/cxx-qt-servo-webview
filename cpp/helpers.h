@@ -47,3 +47,5 @@ QEventPoint const&
 qTouchEventPoint(QTouchEvent& event, ::rust::isize index);
 
 using QMouseEventButton = Qt::MouseButton;
+
+void forceSurfaceFormat();

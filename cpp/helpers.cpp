@@ -10,6 +10,7 @@
 #include <QOpenGLFramebufferObject>
 #include <QOpenGLContext>
 #include <QOpenGLFunctions>
+#include <QSurfaceFormat>
 
 void
 blitFramebuffer(QOpenGLFramebufferObject* target, ::std::unique_ptr<QOpenGLFramebufferObject> source)
@@ -40,4 +41,12 @@ QEventPoint const&
 qTouchEventPoint(QTouchEvent& event, ::rust::isize index)
 {
     return (event.point(static_cast<qsizetype>(index)));
+}
+
+void forceSurfaceFormat()
+{
+    QSurfaceFormat fmt;
+    fmt.setVersion(3, 0);
+    fmt.setRenderableType(QSurfaceFormat::OpenGLES);
+    QSurfaceFormat::setDefaultFormat(fmt);
 }

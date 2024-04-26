@@ -42,4 +42,4 @@ cxx-qt-lib-headers = { git = "https://github.com/kdab/cxx-qt.git", branch = "mai
 qt-build-utils = { git = "https://github.com/kdab/cxx-qt.git", branch = "main" }
 
 # We need a patched surfman to avoid OpenGL errors
-surfman = { git = "https://github.com/ahayzen-kdab/surfman.git", branch = "patched-opengl-assert-0-9-1" }
+surfman = { git = "https://github.com/ahayzen-kdab/surfman.git", branch = "patched-opengl-assert-and-gles-0-9-1" }
