@@ -10,7 +10,7 @@ let
 	llvmPackages = llvmPackages_14; # servo/servo#31059
 	stdenv = stdenvAdapters.useMoldLinker llvmPackages.stdenv;
 in
-	llvmPackages.stdenv.mkDerivation {
+	stdenv.mkDerivation {
 		name = "cxx-qt-servo-webview";
 
 		buildInputs = [
