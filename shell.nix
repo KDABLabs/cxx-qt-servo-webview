@@ -30,6 +30,8 @@ in
 			rustup
 			taplo
 			llvmPackages.bintools
+			llvmPackages.llvm
+			llvmPackages.libclang
 			udev
 			cmake dbus gcc git pkg-config which llvm perl yasm m4
 			pkgs_gnumake_4_3.gnumake # servo/mozjs#375
@@ -37,9 +39,9 @@ in
 			qt6.full
 			stdenv.cc.cc.lib
 			mold
-			libclang
 		];
 		LD_LIBRARY_PATH = lib.makeLibraryPath [zlib xorg.libXcursor xorg.libXrandr xorg.libXi libxkbcommon vulkan-loader stdenv.cc.cc];
+		LIBCLANG_PATH = "${llvmPackages.libclang.lib}/lib";
 
 		shellHook = ''
 			# see https://github.com/servo/mozjs/blob/20f7934762a6a1d4751353c8d024a0185ba85547/shell.nix#L11-L16
